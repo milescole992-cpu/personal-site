@@ -36,8 +36,8 @@ export default async function LoginPage({
               登录 AI资源工作台
             </h1>
             <p className="mt-3 text-sm leading-6 text-slate-400">
-              使用第三方账号登录。当前仅支持 GitHub 和 Google OAuth，
-              暂不开放邮箱密码注册。
+              使用 GitHub 账号登录。第一次登录会自动创建站内用户，
+              暂不开放邮箱密码注册；Google 登录后续再开启。
             </p>
           </div>
 
@@ -54,21 +54,6 @@ export default async function LoginPage({
               >
                 <GitBranch size={18} />
                 使用 GitHub 登录
-              </button>
-            </form>
-
-            <form
-              action={async () => {
-                "use server";
-                await signIn("google", { redirectTo: callbackUrl });
-              }}
-            >
-              <button
-                type="submit"
-                className="flex w-full items-center justify-center gap-3 rounded-md bg-cyan-300 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200"
-              >
-                <span className="font-mono text-base">G</span>
-                使用 Google 登录
               </button>
             </form>
           </div>
