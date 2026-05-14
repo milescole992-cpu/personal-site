@@ -7,6 +7,7 @@ import {
   type Favorite,
   type Resource,
 } from "@/lib/supabase";
+import { getResourceSlug } from "@/lib/slug";
 
 export type ResourceWithState = Resource & {
   isFavorite: boolean;
@@ -155,16 +156,18 @@ export async function getResourceBySlug(slug: string, user?: DbUser | null) {
     };
   }
 
-  const { data: resource, error } = await supabase
+  const { data: resources, error } = await supabase
     .from("resources")
     .select("*")
-    .eq("slug", slug)
-    .maybeSingle();
+    .order("published_at", { ascending: false });
 
   if (error) {
     console.error("Failed to load resource by slug", error.message);
     return { configured: true, resource: null, related: [] };
   }
+
+  const resource =
+    resources?.find((item) => getResourceSlug(item) === slug) ?? null;
 
   if (!resource) {
     return { configured: true, resource: null, related: [] };
@@ -187,22 +190,17 @@ export async function getResourceBySlug(slug: string, user?: DbUser | null) {
     }
   }
 
-  const { data: related, error: relatedError } = await supabase
-    .from("resources")
-    .select("*")
-    .eq("category", resource.category)
-    .neq("id", resource.id)
-    .order("rating", { ascending: false })
-    .limit(3);
-
-  if (relatedError) {
-    console.error("Failed to load related resources", relatedError.message);
-  }
+  const related = (resources ?? [])
+    .filter(
+      (item) => item.id !== resource.id && item.category === resource.category,
+    )
+    .sort((a, b) => b.rating - a.rating)
+    .slice(0, 3);
 
   return {
     configured: true,
     resource: { ...resource, isFavorite },
-    related: related ?? [],
+    related,
   };
 }
 

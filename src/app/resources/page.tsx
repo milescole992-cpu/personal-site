@@ -19,6 +19,7 @@ import {
 import { CardShell } from "@/components/card-shell";
 import { getOrCreateUser, getResourcesForUser } from "@/lib/data";
 import { absoluteUrl, siteName } from "@/lib/seo";
+import { getResourceSlug } from "@/lib/slug";
 
 const resourcesDescription =
   "收录海外 AI 工具、AI 搜索、知识库、图片视频生成、语音配音和工作流资源，适合普通人、创作者和副业创业者长期收藏。";
@@ -156,7 +157,10 @@ export default async function ResourcesPage() {
                 </span>
               </div>
 
-              <Link href={`/resources/${resource.slug}`} className="group">
+              <Link
+                href={`/resources/${getResourceSlug(resource)}`}
+                className="group"
+              >
                 <h2 className="text-base font-semibold text-white transition group-hover:text-cyan-100">
                   {resource.title}
                 </h2>
@@ -225,7 +229,7 @@ export default async function ResourcesPage() {
                   官方来源 <ArrowUpRight size={15} />
                 </a>
                 <Link
-                  href={`/resources/${resource.slug}`}
+                  href={`/resources/${getResourceSlug(resource)}`}
                   className="inline-flex flex-1 items-center justify-center gap-2 rounded-md border border-cyan-300/20 bg-cyan-300/8 px-3 py-2.5 text-sm font-semibold text-cyan-100 transition hover:border-cyan-300/40"
                 >
                   资源详情 <FileText size={15} />

@@ -20,6 +20,7 @@ import {
 import { CardShell } from "@/components/card-shell";
 import { getOrCreateUser, getResourceBySlug } from "@/lib/data";
 import { absoluteUrl, siteName } from "@/lib/seo";
+import { getResourceSlug } from "@/lib/slug";
 
 type ResourceDetailPageProps = {
   params: Promise<{
@@ -43,7 +44,7 @@ export async function generateMetadata({
 
   const title = `${resource.title} | AI资源详情`;
   const description = resource.description;
-  const url = absoluteUrl(`/resources/${resource.slug}`);
+  const url = absoluteUrl(`/resources/${getResourceSlug(resource)}`);
 
   return {
     title,
@@ -227,10 +228,10 @@ export default async function ResourceDetailPage({
                 </Link>
               </div>
               <div className="grid gap-3 md:grid-cols-3">
-                {related.filter((item) => item.slug).map((item) => (
+                {related.map((item) => (
                   <Link
                     key={item.id}
-                    href={`/resources/${item.slug}`}
+                    href={`/resources/${getResourceSlug(item)}`}
                     className="rounded-md border border-white/10 bg-white/5 p-4 transition hover:border-cyan-300/35 hover:bg-white/8"
                   >
                     <span className="text-xs text-slate-500">
@@ -244,7 +245,7 @@ export default async function ResourceDetailPage({
                     </p>
                   </Link>
                 ))}
-                {related.filter((item) => item.slug).length === 0 ? (
+                {related.length === 0 ? (
                   <p className="text-sm text-slate-500">暂无相关推荐。</p>
                 ) : null}
               </div>

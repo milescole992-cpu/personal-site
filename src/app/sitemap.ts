@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { getAllResources } from "@/lib/data";
 import { absoluteUrl } from "@/lib/seo";
+import { getResourceSlug } from "@/lib/slug";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const resources = await getAllResources();
@@ -19,13 +20,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "daily",
       priority: 0.9,
     },
-    ...resources
-      .filter((resource) => resource.slug)
-      .map((resource) => ({
-        url: absoluteUrl(`/resources/${resource.slug}`),
-        lastModified: new Date(resource.updated_at || resource.published_at),
-        changeFrequency: "weekly" as const,
-        priority: 0.75,
-      })),
+    ...resources.map((resource) => ({
+      url: absoluteUrl(`/resources/${getResourceSlug(resource)}`),
+      lastModified: new Date(resource.updated_at || resource.published_at),
+      changeFrequency: "weekly" as const,
+      priority: 0.75,
+    })),
   ];
 }

@@ -8,3 +8,10 @@ export function createSlug(input: string) {
 
   return slug || `resource-${Date.now()}`;
 }
+
+export function getResourceSlug(resource: {
+  slug?: string | null;
+  title: string;
+}) {
+  return resource.slug || createSlug(resource.title);
+}

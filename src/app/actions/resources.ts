@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { getOrCreateUser, getResourceById } from "@/lib/data";
 import { isAdminEmail } from "@/lib/auth-utils";
-import { createSlug } from "@/lib/slug";
+import { createSlug, getResourceSlug } from "@/lib/slug";
 import { getSupabaseServiceClient } from "@/lib/supabase";
 
 function formText(formData: FormData, key: string) {
@@ -50,8 +50,7 @@ export async function createResourceAction(formData: FormData) {
     redirect("/admin?status=missing-resource-fields");
   }
 
-  const { error } = await supabase.from("resources").insert({
-    slug: createSlug(slug || title),
+  const fallbackResourceInput = {
     title,
     description,
     category,
@@ -63,11 +62,28 @@ export async function createResourceAction(formData: FormData) {
     requires_login: formData.get("requires_login") === "on",
     rating: Number.isFinite(rating) ? Math.min(Math.max(rating, 1), 5) : 3,
     published_at: new Date().toISOString(),
-  });
+  };
+  const resourceInput = {
+    slug: createSlug(slug || title),
+    ...fallbackResourceInput,
+  };
+
+  const { error } = await supabase.from("resources").insert(resourceInput);
 
   if (error) {
-    console.error("Failed to create resource", error.message);
-    redirect("/admin?status=create-resource-failed");
+    if (!error.message.toLowerCase().includes("slug")) {
+      console.error("Failed to create resource", error.message);
+      redirect("/admin?status=create-resource-failed");
+    }
+
+    const { error: fallbackError } = await supabase
+      .from("resources")
+      .insert(fallbackResourceInput);
+
+    if (fallbackError) {
+      console.error("Failed to create resource", fallbackError.message);
+      redirect("/admin?status=create-resource-failed");
+    }
   }
 
   revalidatePath("/admin");
@@ -105,8 +121,8 @@ export async function favoriteResourceAction(resourceId: string) {
   const resource = await getResourceById(resourceId);
 
   revalidatePath("/resources");
-  if (resource?.slug) {
-    revalidatePath(`/resources/${resource.slug}`);
+  if (resource) {
+    revalidatePath(`/resources/${getResourceSlug(resource)}`);
   }
   revalidatePath("/dashboard");
 }
