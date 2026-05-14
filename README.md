@@ -1,36 +1,34 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 示例个人网站首页
 
-## Getting Started
+一个基于 Next.js、React、Tailwind CSS、TypeScript 的个人博客 / 工具导航首页骨架。当前内容全部来自本地 mock 数据，不包含真实隐私信息、真实联系方式或真实头像。
 
-First, run the development server:
+## 运行
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+打开 `http://127.0.0.1:3000` 或 `http://localhost:3000` 查看首页。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 构建检查
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run lint
+npm run build
+```
 
-## Learn More
+## 内容替换
 
-To learn more about Next.js, take a look at the following resources:
+主要占位内容集中在 `src/data/mock.ts`：
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- `navItems`：顶部导航
+- `recommendedLinks`：推荐入口卡片
+- `latestArticles`：最新文章列表
+- `hotArticles`：热门文章列表
+- `tools`：工具导航
+- `tags`：标签云
+- `stats`：网站统计
+- `profileLinks`：侧边栏快捷入口
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+首页结构在 `src/app/page.tsx`，组件在 `src/components`。后期接数据库时，可以先保持组件不变，只把 `src/data/mock.ts` 替换为接口或服务端数据读取。
