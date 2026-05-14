@@ -1,7 +1,18 @@
-import { ArrowUpRight, Download, FileText, Lock, Sparkles } from "lucide-react";
+import {
+  ArrowUpRight,
+  Download,
+  FileText,
+  Heart,
+  Lock,
+  Sparkles,
+} from "lucide-react";
 import { auth } from "@/auth";
+import {
+  downloadResourceAction,
+  favoriteResourceAction,
+} from "@/app/actions/resources";
 import { CardShell } from "@/components/card-shell";
-import { resources } from "@/data/mock";
+import { getOrCreateUser, getResourcesForUser } from "@/lib/data";
 
 export const metadata = {
   title: "资源下载 | AI资源工作台",
@@ -10,8 +21,10 @@ export const metadata = {
 
 export default async function ResourcesPage() {
   const session = await auth();
+  const user = session?.user ? await getOrCreateUser(session.user) : null;
   const isLoggedIn = Boolean(session?.user);
   const loginHref = "/login?callbackUrl=/resources";
+  const { configured, resources } = await getResourcesForUser(user);
 
   return (
     <main className="relative min-h-screen bg-[#070914] px-4 py-10 text-slate-100 sm:px-6 lg:px-8">
@@ -26,10 +39,31 @@ export default async function ResourcesPage() {
           </div>
           <h1 className="text-3xl font-semibold text-white">AI资源下载</h1>
           <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-400">
-            这里是对外开放的AI资源库占位。访客可以查看资源介绍；
-            登录后可以看到模拟下载入口。后期可以接数据库、对象存储和真实下载统计。
+            访客可以浏览资源介绍；登录后可以收藏资源、查看下载链接，并记录下载行为。
+            当前是 Supabase 最小可用版本，后期可以继续接文件存储和付费权限。
           </p>
         </CardShell>
+
+        {!configured ? (
+          <CardShell glow="pink">
+            <h2 className="text-lg font-semibold text-white">
+              Supabase 尚未配置
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-slate-400">
+              请在 Vercel 添加 `SUPABASE_URL`、`SUPABASE_ANON_KEY`、
+              `SUPABASE_SERVICE_ROLE_KEY`，并执行 `supabase/schema.sql`。
+            </p>
+          </CardShell>
+        ) : null}
+
+        {configured && resources.length === 0 ? (
+          <CardShell>
+            <h2 className="text-lg font-semibold text-white">暂无资源</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-400">
+              管理员可以进入 `/admin` 新增第一条 AI 资源。
+            </p>
+          </CardShell>
+        ) : null}
 
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {resources.map((resource) => (
@@ -50,32 +84,67 @@ export default async function ResourcesPage() {
                 {resource.description}
               </p>
 
+              <div className="mt-4 flex flex-wrap gap-2">
+                {resource.tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="rounded-md bg-white/5 px-2 py-1 text-xs text-slate-500"
+                  >
+                    #{tag}
+                  </span>
+                ))}
+              </div>
+
               <div className="mt-4 grid grid-cols-3 gap-2 text-xs text-slate-500">
                 <span className="rounded-md bg-white/5 px-2 py-2">
-                  {resource.format}
+                  推荐 {resource.rating}/5
                 </span>
                 <span className="rounded-md bg-white/5 px-2 py-2">
-                  {resource.level}
+                  {resource.requires_login ? "登录下载" : "公开下载"}
                 </span>
                 <span className="rounded-md bg-white/5 px-2 py-2">
-                  {resource.updatedAt}
+                  {new Date(resource.published_at).toLocaleDateString("zh-CN")}
                 </span>
               </div>
 
-              <div className="mt-5 flex gap-2">
+              {isLoggedIn && resource.download_url ? (
+                <p className="mt-4 break-all rounded-md border border-cyan-300/15 bg-cyan-300/8 px-3 py-2 text-xs text-cyan-100">
+                  下载链接：{resource.download_url}
+                </p>
+              ) : null}
+
+              <div className="mt-5 flex flex-wrap gap-2">
                 <a
-                  href="#"
+                  href={resource.source_url || "#"}
+                  target={resource.source_url ? "_blank" : undefined}
+                  rel={resource.source_url ? "noreferrer" : undefined}
                   className="inline-flex flex-1 items-center justify-center gap-2 rounded-md border border-white/10 bg-white/6 px-3 py-2.5 text-sm font-semibold text-slate-100 transition hover:border-cyan-300/40 hover:bg-white/10"
                 >
                   查看详情 <ArrowUpRight size={15} />
                 </a>
                 {isLoggedIn ? (
-                  <a
-                    href={resource.downloadUrl}
-                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-md bg-cyan-300 px-3 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200"
-                  >
-                    模拟下载 <Download size={15} />
-                  </a>
+                  <>
+                    <form action={favoriteResourceAction.bind(null, resource.id)}>
+                      <button
+                        type="submit"
+                        className="inline-flex items-center justify-center gap-2 rounded-md border border-pink-300/20 bg-pink-300/8 px-3 py-2.5 text-sm font-semibold text-pink-100 transition hover:border-pink-300/40"
+                      >
+                        <Heart size={15} />
+                        {resource.isFavorite ? "已收藏" : "收藏"}
+                      </button>
+                    </form>
+                    <form
+                      action={downloadResourceAction.bind(null, resource.id)}
+                      className="flex-1"
+                    >
+                      <button
+                        type="submit"
+                        className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-cyan-300 px-3 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200"
+                      >
+                        下载 <Download size={15} />
+                      </button>
+                    </form>
+                  </>
                 ) : (
                   <a
                     href={loginHref}

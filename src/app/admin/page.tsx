@@ -1,48 +1,15 @@
-import {
-  BarChart3,
-  FilePlus2,
-  LockKeyhole,
-  UploadCloud,
-  UsersRound,
-  Wrench,
-} from "lucide-react";
+import { BarChart3, FilePlus2, LockKeyhole, UsersRound } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
+import { createResourceAction } from "@/app/actions/resources";
 import { CardShell } from "@/components/card-shell";
 import { isAdminEmail } from "@/lib/auth-utils";
+import { getAdminData } from "@/lib/data";
 
 export const metadata = {
   title: "管理后台 | AI资源工作台",
 };
-
-const adminItems = [
-  {
-    title: "用户列表占位",
-    description: "后期接数据库后展示用户邮箱、登录方式、注册时间和权限。",
-    icon: UsersRound,
-  },
-  {
-    title: "资源列表占位",
-    description: "管理AI资源包、下载权限、文件地址和资源状态。",
-    icon: Wrench,
-  },
-  {
-    title: "发布文章入口占位",
-    description: "预留给AI工具评测、工作流教程和资源介绍文章发布。",
-    icon: FilePlus2,
-  },
-  {
-    title: "上传资源入口占位",
-    description: "后期可接对象存储，用于上传PDF、表格、模板和素材包。",
-    icon: UploadCloud,
-  },
-  {
-    title: "下载数据统计占位",
-    description: "统计资源浏览、登录下载、热门资源和转化数据。",
-    icon: BarChart3,
-  },
-];
 
 export default async function AdminPage() {
   const session = await auth();
@@ -76,6 +43,8 @@ export default async function AdminPage() {
     );
   }
 
+  const { configured, users, resources, downloads } = await getAdminData();
+
   return (
     <main className="relative min-h-screen bg-[#070914] px-4 py-10 text-slate-100 sm:px-6 lg:px-8">
       <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(circle_at_20%_0%,rgba(34,211,238,0.11),transparent_30%),radial-gradient(circle_at_82%_12%,rgba(217,70,239,0.10),transparent_28%),linear-gradient(180deg,#070914,#0b1020_48%,#070914)]" />
@@ -88,26 +57,181 @@ export default async function AdminPage() {
           </p>
           <h1 className="text-3xl font-semibold text-white">管理后台</h1>
           <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-400">
-            当前是管理员占位后台。后期可以接数据库、文章编辑器、资源上传、
-            用户权限和下载数据统计。
+            当前是 Supabase MVP 后台。管理员可以新增资源，并查看资源列表、
+            下载记录占位和用户列表占位。
           </p>
         </CardShell>
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {adminItems.map((item) => {
-            const Icon = item.icon;
-            return (
-              <CardShell key={item.title} className="p-5">
-                <Icon className="mb-4 text-cyan-200" size={22} />
-                <h2 className="text-base font-semibold text-white">
-                  {item.title}
-                </h2>
-                <p className="mt-2 text-sm leading-6 text-slate-400">
-                  {item.description}
+        {!configured ? (
+          <CardShell glow="pink">
+            <h2 className="text-lg font-semibold text-white">
+              Supabase 尚未配置
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-slate-400">
+              请先在 Vercel 配置 Supabase 三个环境变量，并在 Supabase SQL Editor
+              执行 `supabase/schema.sql`。
+            </p>
+          </CardShell>
+        ) : null}
+
+        <div className="grid gap-4 md:grid-cols-3">
+          <CardShell>
+            <UsersRound className="mb-4 text-cyan-200" size={22} />
+            <p className="font-mono text-2xl text-white">{users.length}</p>
+            <p className="mt-1 text-sm text-slate-400">用户列表占位</p>
+          </CardShell>
+          <CardShell>
+            <FilePlus2 className="mb-4 text-cyan-200" size={22} />
+            <p className="font-mono text-2xl text-white">{resources.length}</p>
+            <p className="mt-1 text-sm text-slate-400">资源列表</p>
+          </CardShell>
+          <CardShell>
+            <BarChart3 className="mb-4 text-cyan-200" size={22} />
+            <p className="font-mono text-2xl text-white">{downloads.length}</p>
+            <p className="mt-1 text-sm text-slate-400">下载数据统计占位</p>
+          </CardShell>
+        </div>
+
+        <CardShell className="p-5">
+          <h2 className="text-lg font-semibold text-white">新增资源</h2>
+          <form action={createResourceAction} className="mt-5 grid gap-4">
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="grid gap-2 text-sm text-slate-300">
+                标题
+                <input
+                  name="title"
+                  required
+                  className="rounded-md border border-white/10 bg-black/24 px-3 py-2 text-slate-100 outline-none focus:border-cyan-300/50"
+                />
+              </label>
+              <label className="grid gap-2 text-sm text-slate-300">
+                分类
+                <input
+                  name="category"
+                  defaultValue="AI资源"
+                  className="rounded-md border border-white/10 bg-black/24 px-3 py-2 text-slate-100 outline-none focus:border-cyan-300/50"
+                />
+              </label>
+            </div>
+            <label className="grid gap-2 text-sm text-slate-300">
+              简介
+              <textarea
+                name="description"
+                required
+                rows={3}
+                className="rounded-md border border-white/10 bg-black/24 px-3 py-2 text-slate-100 outline-none focus:border-cyan-300/50"
+              />
+            </label>
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="grid gap-2 text-sm text-slate-300">
+                标签，英文逗号分隔
+                <input
+                  name="tags"
+                  placeholder="AI,工具,工作流"
+                  className="rounded-md border border-white/10 bg-black/24 px-3 py-2 text-slate-100 outline-none focus:border-cyan-300/50"
+                />
+              </label>
+              <label className="grid gap-2 text-sm text-slate-300">
+                推荐指数 1-5
+                <input
+                  name="rating"
+                  type="number"
+                  min="1"
+                  max="5"
+                  defaultValue="3"
+                  className="rounded-md border border-white/10 bg-black/24 px-3 py-2 text-slate-100 outline-none focus:border-cyan-300/50"
+                />
+              </label>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="grid gap-2 text-sm text-slate-300">
+                来源链接
+                <input
+                  name="source_url"
+                  type="url"
+                  className="rounded-md border border-white/10 bg-black/24 px-3 py-2 text-slate-100 outline-none focus:border-cyan-300/50"
+                />
+              </label>
+              <label className="grid gap-2 text-sm text-slate-300">
+                下载链接
+                <input
+                  name="download_url"
+                  type="url"
+                  className="rounded-md border border-white/10 bg-black/24 px-3 py-2 text-slate-100 outline-none focus:border-cyan-300/50"
+                />
+              </label>
+            </div>
+            <label className="flex items-center gap-2 text-sm text-slate-300">
+              <input
+                name="requires_login"
+                type="checkbox"
+                defaultChecked
+                className="size-4 accent-cyan-300"
+              />
+              需要登录后下载
+            </label>
+            <button
+              type="submit"
+              className="w-fit rounded-md bg-cyan-300 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200"
+            >
+              新增资源
+            </button>
+          </form>
+        </CardShell>
+
+        <CardShell className="p-5">
+          <h2 className="text-lg font-semibold text-white">资源列表</h2>
+          <div className="mt-4 divide-y divide-white/8">
+            {resources.map((resource) => (
+              <div key={resource.id} className="py-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-medium text-white">{resource.title}</span>
+                  <span className="rounded-md bg-white/5 px-2 py-1 text-xs text-slate-500">
+                    {resource.category}
+                  </span>
+                  <span className="rounded-md bg-white/5 px-2 py-1 text-xs text-slate-500">
+                    推荐 {resource.rating}/5
+                  </span>
+                </div>
+                <p className="mt-2 text-sm text-slate-400">
+                  {resource.description}
                 </p>
-              </CardShell>
-            );
-          })}
+              </div>
+            ))}
+            {resources.length === 0 ? (
+              <p className="py-3 text-sm text-slate-500">暂无资源。</p>
+            ) : null}
+          </div>
+        </CardShell>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <CardShell>
+            <h2 className="text-lg font-semibold text-white">用户列表占位</h2>
+            <div className="mt-4 space-y-2">
+              {users.slice(0, 6).map((user) => (
+                <p key={user.id} className="text-sm text-slate-400">
+                  {user.email}
+                </p>
+              ))}
+              {users.length === 0 ? (
+                <p className="text-sm text-slate-500">暂无用户。</p>
+              ) : null}
+            </div>
+          </CardShell>
+          <CardShell>
+            <h2 className="text-lg font-semibold text-white">下载记录占位</h2>
+            <div className="mt-4 space-y-2">
+              {downloads.slice(0, 6).map((download) => (
+                <p key={download.id} className="text-sm text-slate-400">
+                  {new Date(download.created_at).toLocaleString("zh-CN")} ·{" "}
+                  {download.resource_id}
+                </p>
+              ))}
+              {downloads.length === 0 ? (
+                <p className="text-sm text-slate-500">暂无下载记录。</p>
+              ) : null}
+            </div>
+          </CardShell>
         </div>
       </div>
     </main>

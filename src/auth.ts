@@ -1,5 +1,6 @@
 import NextAuth from "next-auth";
 import GitHub from "next-auth/providers/github";
+import { syncUserFromSession } from "@/lib/data";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   trustHost: true,
@@ -9,6 +10,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
   session: {
     strategy: "jwt",
+  },
+  events: {
+    async signIn({ user, account }) {
+      await syncUserFromSession(
+        user,
+        account?.provider,
+        account?.providerAccountId,
+      );
+    },
   },
   providers: [
     GitHub({
