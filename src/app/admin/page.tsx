@@ -57,8 +57,8 @@ export default async function AdminPage() {
           </p>
           <h1 className="text-3xl font-semibold text-white">管理后台</h1>
           <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-400">
-            当前是 Supabase MVP 后台。管理员可以新增资源，并查看资源列表、
-            下载记录占位和用户列表占位。
+            当前是内容录入后台。优先把 AI 工具库、资源说明和工作流入口维护起来，
+            后续再扩展复杂权限、文件存储和内容发布系统。
           </p>
         </CardShell>
 
@@ -93,14 +93,25 @@ export default async function AdminPage() {
         </div>
 
         <CardShell className="p-5">
-          <h2 className="text-lg font-semibold text-white">新增资源</h2>
-          <form action={createResourceAction} className="mt-5 grid gap-4">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-white">新增 AI 资源</h2>
+              <p className="mt-1 text-sm text-slate-500">
+                建议按“能解决什么问题”来写简介，不只写工具名称。
+              </p>
+            </div>
+            <span className="rounded-md border border-cyan-300/20 bg-cyan-300/8 px-3 py-2 text-xs text-cyan-100">
+              标题、简介、链接必填更利于前台展示
+            </span>
+          </div>
+          <form action={createResourceAction} className="mt-5 grid gap-5">
             <div className="grid gap-4 md:grid-cols-2">
               <label className="grid gap-2 text-sm text-slate-300">
                 标题
                 <input
                   name="title"
                   required
+                  placeholder="例如：ChatGPT 官方入口与基础用法"
                   className="rounded-md border border-white/10 bg-black/24 px-3 py-2 text-slate-100 outline-none focus:border-cyan-300/50"
                 />
               </label>
@@ -109,16 +120,29 @@ export default async function AdminPage() {
                 <input
                   name="category"
                   defaultValue="AI资源"
+                  list="resource-categories"
                   className="rounded-md border border-white/10 bg-black/24 px-3 py-2 text-slate-100 outline-none focus:border-cyan-300/50"
                 />
               </label>
             </div>
+            <datalist id="resource-categories">
+              <option value="通用助手" />
+              <option value="AI搜索" />
+              <option value="知识库" />
+              <option value="设计创作" />
+              <option value="图片生成" />
+              <option value="视频创作" />
+              <option value="音频创作" />
+              <option value="开发资源" />
+              <option value="工作流教程" />
+            </datalist>
             <label className="grid gap-2 text-sm text-slate-300">
               简介
               <textarea
                 name="description"
                 required
                 rows={3}
+                placeholder="一句话说明这个资源解决什么问题、为什么值得收藏。"
                 className="rounded-md border border-white/10 bg-black/24 px-3 py-2 text-slate-100 outline-none focus:border-cyan-300/50"
               />
             </label>
@@ -127,7 +151,7 @@ export default async function AdminPage() {
                 标签，英文逗号分隔
                 <input
                   name="tags"
-                  placeholder="AI,工具,工作流"
+                  placeholder="AI助手,写作,工作流"
                   className="rounded-md border border-white/10 bg-black/24 px-3 py-2 text-slate-100 outline-none focus:border-cyan-300/50"
                 />
               </label>
@@ -145,10 +169,31 @@ export default async function AdminPage() {
             </div>
             <div className="grid gap-4 md:grid-cols-2">
               <label className="grid gap-2 text-sm text-slate-300">
+                适合人群
+                <textarea
+                  name="audience"
+                  rows={3}
+                  placeholder="例如：AI 新手、内容创作者、副业创业者"
+                  className="rounded-md border border-white/10 bg-black/24 px-3 py-2 text-slate-100 outline-none focus:border-cyan-300/50"
+                />
+              </label>
+              <label className="grid gap-2 text-sm text-slate-300">
+                使用场景
+                <textarea
+                  name="use_cases"
+                  rows={3}
+                  placeholder="例如：选题调研、脚本生成、资料总结、自动化整理"
+                  className="rounded-md border border-white/10 bg-black/24 px-3 py-2 text-slate-100 outline-none focus:border-cyan-300/50"
+                />
+              </label>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="grid gap-2 text-sm text-slate-300">
                 来源链接
                 <input
                   name="source_url"
                   type="url"
+                  placeholder="官方介绍页或文档链接"
                   className="rounded-md border border-white/10 bg-black/24 px-3 py-2 text-slate-100 outline-none focus:border-cyan-300/50"
                 />
               </label>
@@ -157,6 +202,7 @@ export default async function AdminPage() {
                 <input
                   name="download_url"
                   type="url"
+                  placeholder="可访问入口、资料下载页或你的资源站内链接"
                   className="rounded-md border border-white/10 bg-black/24 px-3 py-2 text-slate-100 outline-none focus:border-cyan-300/50"
                 />
               </label>
@@ -196,6 +242,14 @@ export default async function AdminPage() {
                 <p className="mt-2 text-sm text-slate-400">
                   {resource.description}
                 </p>
+                <div className="mt-3 grid gap-2 text-xs text-slate-500 md:grid-cols-2">
+                  <p className="rounded-md bg-white/5 px-3 py-2">
+                    适合：{resource.audience || "待补充"}
+                  </p>
+                  <p className="rounded-md bg-white/5 px-3 py-2">
+                    场景：{resource.use_cases || "待补充"}
+                  </p>
+                </div>
               </div>
             ))}
             {resources.length === 0 ? (

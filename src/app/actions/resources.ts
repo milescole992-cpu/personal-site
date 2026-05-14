@@ -40,6 +40,8 @@ export async function createResourceAction(formData: FormData) {
   const category = formText(formData, "category") || "AI资源";
   const sourceUrl = formText(formData, "source_url");
   const downloadUrl = formText(formData, "download_url");
+  const audience = formText(formData, "audience");
+  const useCases = formText(formData, "use_cases");
   const rating = Number(formData.get("rating") || 3);
 
   if (!title || !description) {
@@ -53,6 +55,8 @@ export async function createResourceAction(formData: FormData) {
     tags: parseTags(formText(formData, "tags")),
     source_url: sourceUrl || null,
     download_url: downloadUrl || null,
+    audience,
+    use_cases: useCases,
     requires_login: formData.get("requires_login") === "on",
     rating: Number.isFinite(rating) ? Math.min(Math.max(rating, 1), 5) : 3,
     published_at: new Date().toISOString(),

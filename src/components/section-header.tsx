@@ -2,9 +2,15 @@ type SectionHeaderProps = {
   eyebrow?: string;
   title: string;
   action?: string;
+  actionHref?: string;
 };
 
-export function SectionHeader({ eyebrow, title, action }: SectionHeaderProps) {
+export function SectionHeader({
+  eyebrow,
+  title,
+  action,
+  actionHref = "#",
+}: SectionHeaderProps) {
   return (
     <div className="mb-4 flex items-end justify-between gap-4">
       <div>
@@ -17,7 +23,7 @@ export function SectionHeader({ eyebrow, title, action }: SectionHeaderProps) {
       </div>
       {action ? (
         <a
-          href="#"
+          href={actionHref}
           className="text-sm text-slate-400 transition hover:text-cyan-200"
         >
           {action}

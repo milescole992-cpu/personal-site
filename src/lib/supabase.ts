@@ -19,6 +19,8 @@ export type Resource = {
   tags: string[];
   source_url: string | null;
   download_url: string | null;
+  audience: string;
+  use_cases: string;
   requires_login: boolean;
   published_at: string;
   rating: number;

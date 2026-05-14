@@ -1,10 +1,13 @@
 import {
   ArrowUpRight,
   Download,
+  Filter,
   FileText,
   Heart,
   Lock,
   Sparkles,
+  Target,
+  UsersRound,
 } from "lucide-react";
 import { auth } from "@/auth";
 import {
@@ -25,6 +28,10 @@ export default async function ResourcesPage() {
   const isLoggedIn = Boolean(session?.user);
   const loginHref = "/login?callbackUrl=/resources";
   const { configured, resources } = await getResourcesForUser(user);
+  const categories = Array.from(
+    new Set(resources.map((resource) => resource.category)),
+  );
+  const featuredCount = resources.filter((resource) => resource.rating >= 5).length;
 
   return (
     <main className="relative min-h-screen bg-[#070914] px-4 py-10 text-slate-100 sm:px-6 lg:px-8">
@@ -33,15 +40,36 @@ export default async function ResourcesPage() {
 
       <div className="mx-auto max-w-7xl space-y-6">
         <CardShell className="p-6 sm:p-7">
-          <div className="mb-4 inline-flex items-center gap-2 rounded-md border border-cyan-300/20 bg-cyan-300/8 px-3 py-1.5 font-mono text-xs text-cyan-100">
-            <Sparkles size={14} />
-            RESOURCE LIBRARY
+          <div className="grid gap-6 lg:grid-cols-[1fr_320px] lg:items-end">
+            <div>
+              <div className="mb-4 inline-flex items-center gap-2 rounded-md border border-cyan-300/20 bg-cyan-300/8 px-3 py-1.5 font-mono text-xs text-cyan-100">
+                <Sparkles size={14} />
+                CURATED AI RESOURCE LIBRARY
+              </div>
+              <h1 className="text-3xl font-semibold text-white sm:text-4xl">
+                海外 AI 资源筛选库
+              </h1>
+              <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-400">
+                这里不是简单堆链接，而是按普通人、内容创作者、AI 工具玩家和副业创业者的真实场景，
+                筛选可上手的 AI 工具、知识库、创作工具和工作流入口。
+              </p>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2 text-center">
+              <div className="rounded-md border border-white/10 bg-white/5 px-3 py-3">
+                <p className="font-mono text-xl text-white">{resources.length}</p>
+                <p className="mt-1 text-xs text-slate-500">已收录</p>
+              </div>
+              <div className="rounded-md border border-white/10 bg-white/5 px-3 py-3">
+                <p className="font-mono text-xl text-white">{categories.length}</p>
+                <p className="mt-1 text-xs text-slate-500">分类</p>
+              </div>
+              <div className="rounded-md border border-white/10 bg-white/5 px-3 py-3">
+                <p className="font-mono text-xl text-white">{featuredCount}</p>
+                <p className="mt-1 text-xs text-slate-500">高推荐</p>
+              </div>
+            </div>
           </div>
-          <h1 className="text-3xl font-semibold text-white">AI资源下载</h1>
-          <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-400">
-            访客可以浏览资源介绍；登录后可以收藏资源、查看下载链接，并记录下载行为。
-            当前是 Supabase 最小可用版本，后期可以继续接文件存储和付费权限。
-          </p>
         </CardShell>
 
         {!configured ? (
@@ -65,7 +93,37 @@ export default async function ResourcesPage() {
           </CardShell>
         ) : null}
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {configured && resources.length > 0 ? (
+          <CardShell className="p-4">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex items-center gap-3">
+                <span className="grid size-10 place-items-center rounded-md border border-cyan-300/20 bg-cyan-300/8 text-cyan-100">
+                  <Filter size={17} />
+                </span>
+                <div>
+                  <h2 className="text-base font-semibold text-white">
+                    当前资源索引
+                  </h2>
+                  <p className="mt-1 text-sm text-slate-500">
+                    先按分类浏览，后续可以继续扩展搜索、筛选和详情页。
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {categories.map((category) => (
+                  <span
+                    key={category}
+                    className="rounded-md border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-300"
+                  >
+                    {category}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </CardShell>
+        ) : null}
+
+        <div className="grid gap-4 lg:grid-cols-2">
           {resources.map((resource) => (
             <CardShell key={resource.id} className="flex h-full flex-col p-5">
               <div className="mb-4 flex items-start justify-between gap-3">
@@ -83,6 +141,27 @@ export default async function ResourcesPage() {
               <p className="mt-2 flex-1 text-sm leading-6 text-slate-400">
                 {resource.description}
               </p>
+
+              <div className="mt-4 grid gap-3 md:grid-cols-2">
+                <div className="rounded-md border border-white/10 bg-white/5 p-3">
+                  <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-cyan-100">
+                    <UsersRound size={14} />
+                    适合人群
+                  </div>
+                  <p className="text-xs leading-5 text-slate-400">
+                    {resource.audience || "待补充"}
+                  </p>
+                </div>
+                <div className="rounded-md border border-white/10 bg-white/5 p-3">
+                  <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-pink-100">
+                    <Target size={14} />
+                    使用场景
+                  </div>
+                  <p className="text-xs leading-5 text-slate-400">
+                    {resource.use_cases || "待补充"}
+                  </p>
+                </div>
+              </div>
 
               <div className="mt-4 flex flex-wrap gap-2">
                 {resource.tags.map((tag) => (

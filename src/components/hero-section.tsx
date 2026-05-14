@@ -18,23 +18,22 @@ export function HeroSection() {
             <span className="block text-cyan-200">把能落地的工作流讲清楚</span>
           </h1>
           <p className="mt-5 max-w-2xl text-sm leading-7 text-slate-300 sm:text-base">
-            这里专注整理适合普通人、内容创作者、AI工具玩家和副业创业者的
-            AI资源、海外工具筛选与AI工作流教程。先用占位内容搭好结构，
-            后期可以逐步替换为真实评测、教程和资源清单。
+            面向普通人、内容创作者、AI 工具玩家和副业创业者，持续筛选海外 AI 工具、
+            整理可直接访问的资源入口，并把真实可复用的 AI 工作流拆成教程。
           </p>
 
           <div className="mt-7 flex flex-col gap-3 sm:flex-row">
             <a
-              href="#articles"
+              href="/resources"
               className="inline-flex items-center justify-center gap-2 rounded-md bg-cyan-300 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200"
             >
-              看工作流教程 <ArrowRight size={16} />
+              进入 AI 资源库 <ArrowRight size={16} />
             </a>
             <a
-              href="#tools"
+              href="#articles"
               className="inline-flex items-center justify-center gap-2 rounded-md border border-white/12 bg-white/6 px-4 py-2.5 text-sm font-semibold text-slate-100 transition hover:border-fuchsia-300/40 hover:bg-white/10"
             >
-              筛选AI工具 <Orbit size={16} />
+              看工作流教程 <Orbit size={16} />
             </a>
           </div>
         </div>
@@ -50,7 +49,7 @@ export function HeroSection() {
             </span>
           </div>
           <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-            {["资源", "工具", "教程"].map((item, index) => (
+            {["资源库", "工具筛选", "工作流"].map((item, index) => (
               <div key={item} className="rounded-md bg-white/5 px-2 py-3">
                 <span className="block font-mono text-lg text-white">
                   0{index + 1}

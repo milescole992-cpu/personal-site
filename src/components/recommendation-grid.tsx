@@ -5,7 +5,12 @@ import { SectionHeader } from "./section-header";
 export function RecommendationGrid() {
   return (
     <section>
-      <SectionHeader eyebrow="Start Here" title="核心入口" action="全部资源" />
+      <SectionHeader
+        eyebrow="Start Here"
+        title="核心入口"
+        action="全部资源"
+        actionHref="/resources"
+      />
       <div className="grid gap-4 sm:grid-cols-2">
         {recommendedLinks.map((item) => {
           const Icon = item.icon;

@@ -10,7 +10,7 @@ export function SearchPanel() {
           <Search size={18} className="text-cyan-200" />
           <input
             aria-label="搜索"
-            placeholder="搜索占位：输入 AI写作、海外工具、工作流、副业案例"
+            placeholder="搜索占位：输入 ChatGPT、AI搜索、图片生成、工作流教程"
             className="w-full bg-transparent text-sm text-slate-100 outline-none placeholder:text-slate-500"
           />
           <Command size={16} className="hidden text-slate-600 sm:block" />

@@ -19,6 +19,8 @@ create table if not exists public.resources (
   tags text[] not null default '{}',
   source_url text,
   download_url text,
+  audience text not null default '',
+  use_cases text not null default '',
   requires_login boolean not null default true,
   published_at timestamptz not null default now(),
   rating integer not null default 3 check (rating >= 1 and rating <= 5),

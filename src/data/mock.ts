@@ -27,29 +27,29 @@ export const navItems = [
 export const recommendedLinks = [
   {
     title: "AI资源清单",
-    description: "整理适合普通人上手的 AI 网站、提示词、案例库和学习资料。",
-    href: "#",
+    description: "收录官方入口、学习资料、工具说明和可访问链接，先解决去哪用、怎么用。",
+    href: "/resources",
     icon: Archive,
     accent: "cyan",
   },
   {
     title: "海外AI工具筛选",
     description: "按场景筛掉噱头工具，保留真正能提升创作、效率和变现的选项。",
-    href: "#",
+    href: "/resources",
     icon: ScanSearch,
     accent: "violet",
   },
   {
     title: "AI工作流教程",
     description: "用步骤化教程拆解从选题、生成、自动化到发布的完整流程。",
-    href: "#",
+    href: "#articles",
     icon: TerminalSquare,
     accent: "pink",
   },
   {
     title: "新手上路路线",
-    description: "给内容创作者、AI玩家和副业探索者准备的入门路径占位。",
-    href: "#",
+    description: "从通用助手、搜索研究、知识库到创作工具，按低门槛路线逐步上手。",
+    href: "/resources",
     icon: Rocket,
     accent: "emerald",
   },
@@ -167,14 +167,14 @@ export const hotArticles = [
 ];
 
 export const tools = [
-  { name: "AI写作工具占位", description: "选题 / 大纲 / 长文", icon: TerminalSquare },
-  { name: "AI图片工具占位", description: "海报 / 封面 / 素材", icon: ImageIcon },
-  { name: "AI编程工具占位", description: "代码 / 自动化 / 脚本", icon: Code2 },
-  { name: "海外工具检索占位", description: "筛选 / 对比 / 替代", icon: ScanSearch },
-  { name: "账号与支付避坑占位", description: "地区 / 价格 / 风险", icon: Shield },
-  { name: "效率自动化占位", description: "采集 / 整理 / 发布", icon: Zap },
-  { name: "资源库归档占位", description: "提示词 / 模板 / 案例", icon: Archive },
-  { name: "创作灵感库占位", description: "选题 / 参考 / 趋势", icon: GalleryHorizontalEnd },
+  { name: "AI写作与总结", description: "选题 / 大纲 / 长文", icon: TerminalSquare },
+  { name: "AI图片与设计", description: "海报 / 封面 / 素材", icon: ImageIcon },
+  { name: "AI编程与原型", description: "代码 / 自动化 / 脚本", icon: Code2 },
+  { name: "AI搜索与研究", description: "筛选 / 对比 / 来源", icon: ScanSearch },
+  { name: "账号与支付避坑", description: "地区 / 价格 / 风险", icon: Shield },
+  { name: "效率自动化流程", description: "采集 / 整理 / 发布", icon: Zap },
+  { name: "提示词与模板库", description: "提示词 / 模板 / 案例", icon: Archive },
+  { name: "创作灵感来源", description: "选题 / 参考 / 趋势", icon: GalleryHorizontalEnd },
 ];
 
 export const tags = [
@@ -197,10 +197,10 @@ export const tags = [
 ];
 
 export const stats = [
-  { label: "AI资源", value: "000", icon: FileText },
-  { label: "筛选工具", value: "000", icon: Wrench },
-  { label: "工作流", value: "000", icon: Layers3 },
-  { label: "案例笔记", value: "000", icon: MessageCircle },
+  { label: "AI资源", value: "010", icon: FileText },
+  { label: "筛选工具", value: "008", icon: Wrench },
+  { label: "工作流", value: "003", icon: Layers3 },
+  { label: "案例笔记", value: "006", icon: MessageCircle },
 ];
 
 export const profileLinks = [
