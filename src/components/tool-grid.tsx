@@ -6,7 +6,11 @@ import { SectionHeader } from "./section-header";
 export function ToolGrid() {
   return (
     <section id="tools">
-      <SectionHeader eyebrow="Toolbox" title="工具导航" action="管理工具" />
+      <SectionHeader
+        eyebrow="Toolbox"
+        title="海外AI工具导航"
+        action="查看筛选标准"
+      />
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {tools.map((tool) => {
           const Icon = tool.icon;

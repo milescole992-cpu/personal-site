@@ -7,14 +7,14 @@ export function SiteHeader() {
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <a href="#" className="flex items-center gap-3">
           <span className="grid size-9 place-items-center rounded-lg border border-cyan-300/30 bg-cyan-300/10 font-mono text-sm font-bold text-cyan-200 shadow-[0_0_24px_rgba(34,211,238,0.18)]">
-            N
+            AI
           </span>
           <span>
             <span className="block text-sm font-semibold text-white">
-              示例个人站
+              AI资源工作台
             </span>
             <span className="block font-mono text-[10px] uppercase tracking-[0.24em] text-slate-500">
-              Personal Node
+              Tools & Workflow
             </span>
           </span>
         </a>

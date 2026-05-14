@@ -1,4 +1,5 @@
 import { ArticleList } from "@/components/article-list";
+import { FocusSection } from "@/components/focus-section";
 import { HeroSection } from "@/components/hero-section";
 import { RecommendationGrid } from "@/components/recommendation-grid";
 import { SearchPanel } from "@/components/search-panel";
@@ -18,10 +19,11 @@ export default function Home() {
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
           <div className="space-y-8">
             <HeroSection />
-            <SearchPanel />
+            <FocusSection />
             <RecommendationGrid />
-            <ArticleList />
+            <SearchPanel />
             <ToolGrid />
+            <ArticleList />
           </div>
           <Sidebar />
         </div>

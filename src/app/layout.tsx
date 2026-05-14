@@ -13,8 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "示例个人站 | Personal Blog",
-  description: "暗色科技感个人博客与工具导航首页骨架。",
+  title: "AI资源工作台 | 海外AI工具筛选与工作流教程",
+  description:
+    "面向普通人、内容创作者、AI工具玩家和副业创业者的AI资源分享、海外AI工具筛选与AI工作流教程。",
 };
 
 export default function RootLayout({

@@ -25,13 +25,14 @@ function ProfileCard() {
         </div>
         <div>
           <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-cyan-300/70">
-            Operator
+            Curator
           </p>
           <h2 className="mt-1 text-lg font-semibold text-white">
-            昵称占位
+            AI资源筛选者
           </h2>
           <p className="mt-2 text-sm leading-6 text-slate-400">
-            这里是个人简介占位。可以写技术方向、兴趣、站点说明或一句长期签名。
+            这里是个人简介占位：专注分享AI资源、筛选海外AI工具，
+            并把可复制的AI工作流整理成教程。
           </p>
         </div>
       </div>
@@ -58,11 +59,11 @@ function ProfileCard() {
       <div className="mt-5 flex flex-wrap gap-2 text-xs text-slate-500">
         <span className="inline-flex items-center gap-1 rounded-md bg-white/5 px-2.5 py-1.5">
           <MapPin size={12} />
-          位置占位
+          面向中文用户
         </span>
         <span className="inline-flex items-center gap-1 rounded-md bg-white/5 px-2.5 py-1.5">
           <Radio size={12} />
-          在线占位
+          持续更新
         </span>
       </div>
     </CardShell>
@@ -77,7 +78,7 @@ function StatsCard() {
           <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-cyan-300/70">
             Site Status
           </p>
-          <h2 className="mt-1 text-lg font-semibold text-white">网站统计</h2>
+          <h2 className="mt-1 text-lg font-semibold text-white">内容地图</h2>
         </div>
         <Activity size={18} className="text-emerald-200" />
       </div>

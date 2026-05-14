@@ -6,7 +6,7 @@ import { SectionHeader } from "./section-header";
 export function HotList() {
   return (
     <section>
-      <SectionHeader eyebrow="Ranking" title="热门文章" />
+      <SectionHeader eyebrow="Ranking" title="热门资源" />
       <CardShell className="p-0">
         <ol className="divide-y divide-white/8">
           {hotArticles.map((article, index) => (

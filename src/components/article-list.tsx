@@ -6,7 +6,7 @@ import { SectionHeader } from "./section-header";
 export function ArticleList() {
   return (
     <section id="articles">
-      <SectionHeader eyebrow="Latest" title="最新文章" action="查看更多" />
+      <SectionHeader eyebrow="Tutorials" title="最新AI工作流教程" action="查看更多" />
       <div className="space-y-3">
         {latestArticles.map((article) => (
           <CardShell key={article.id} className="p-4" glow="none">

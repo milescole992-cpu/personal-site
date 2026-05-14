@@ -5,7 +5,7 @@ import { SectionHeader } from "./section-header";
 export function RecommendationGrid() {
   return (
     <section>
-      <SectionHeader eyebrow="Pinned" title="推荐入口" action="全部入口" />
+      <SectionHeader eyebrow="Start Here" title="核心入口" action="全部资源" />
       <div className="grid gap-4 sm:grid-cols-2">
         {recommendedLinks.map((item) => {
           const Icon = item.icon;
@@ -16,7 +16,7 @@ export function RecommendationGrid() {
                   <span className="grid size-10 place-items-center rounded-md border border-white/10 bg-white/6 text-cyan-200">
                     <Icon size={19} />
                   </span>
-                  <span className="font-mono text-xs text-slate-600">ENTRY</span>
+                  <span className="font-mono text-xs text-slate-600">FOCUS</span>
                 </div>
                 <h3 className="text-base font-semibold text-white">
                   {item.title}
