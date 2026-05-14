@@ -18,11 +18,7 @@ import {
   favoriteResourceAction,
 } from "@/app/actions/resources";
 import { CardShell } from "@/components/card-shell";
-import {
-  getAllResources,
-  getOrCreateUser,
-  getResourceBySlug,
-} from "@/lib/data";
+import { getOrCreateUser, getResourceBySlug } from "@/lib/data";
 import { absoluteUrl, siteName } from "@/lib/seo";
 
 type ResourceDetailPageProps = {
@@ -31,15 +27,7 @@ type ResourceDetailPageProps = {
   }>;
 };
 
-export async function generateStaticParams() {
-  const resources = await getAllResources();
-
-  return resources
-    .filter((resource) => resource.slug)
-    .map((resource) => ({
-      slug: resource.slug as string,
-    }));
-}
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
   params,
