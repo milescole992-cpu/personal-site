@@ -17,10 +17,10 @@ import {
 } from "lucide-react";
 
 export const navItems = [
-  { label: "首页", href: "#" },
-  { label: "AI资源", href: "#resources" },
-  { label: "工具筛选", href: "#tools" },
-  { label: "工作流教程", href: "#articles" },
+  { label: "首页", href: "/" },
+  { label: "资源下载", href: "/resources" },
+  { label: "工具筛选", href: "/#tools" },
+  { label: "工作流教程", href: "/#articles" },
   { label: "关于本站", href: "#" },
 ];
 
@@ -207,4 +207,67 @@ export const profileLinks = [
   { label: "AI资源归档", icon: BookOpenText },
   { label: "海外工具导航", icon: Cpu },
   { label: "工作流教程", icon: Rocket },
+];
+
+export const resources = [
+  {
+    id: "prompt-starter-kit",
+    title: "AI提示词入门资源包",
+    category: "提示词",
+    description: "适合普通人快速上手的提示词模板占位，包含写作、总结、选题和复盘场景。",
+    format: "PDF / Notion",
+    level: "新手",
+    updatedAt: "2026-05-14",
+    downloadUrl: "#download-prompt-starter-kit",
+  },
+  {
+    id: "creator-workflow-map",
+    title: "内容创作者AI工作流地图",
+    category: "工作流",
+    description: "从选题、脚本、配图到发布的流程图占位，后期可替换为真实文件。",
+    format: "PDF / PNG",
+    level: "进阶",
+    updatedAt: "2026-05-13",
+    downloadUrl: "#download-creator-workflow-map",
+  },
+  {
+    id: "global-ai-tools-sheet",
+    title: "海外AI工具筛选表",
+    category: "工具筛选",
+    description: "按用途、价格、地区限制、替代方案整理的海外AI工具表格占位。",
+    format: "Sheet",
+    level: "通用",
+    updatedAt: "2026-05-12",
+    downloadUrl: "#download-global-ai-tools-sheet",
+  },
+  {
+    id: "side-project-checklist",
+    title: "AI副业项目判断清单",
+    category: "副业",
+    description: "用于判断一个AI副业玩法是否值得投入的检查清单占位。",
+    format: "PDF",
+    level: "进阶",
+    updatedAt: "2026-05-11",
+    downloadUrl: "#download-side-project-checklist",
+  },
+  {
+    id: "automation-playbook",
+    title: "AI自动化流程搭建手册",
+    category: "自动化",
+    description: "采集、整理、生成、分发的自动化流程说明占位，后续可接真实教程。",
+    format: "Markdown",
+    level: "高级",
+    updatedAt: "2026-05-10",
+    downloadUrl: "#download-automation-playbook",
+  },
+  {
+    id: "ai-resource-navigation",
+    title: "AI资源导航收藏夹",
+    category: "AI资源",
+    description: "常用AI网站、学习资料、案例库和灵感来源的收藏夹占位。",
+    format: "Bookmark",
+    level: "新手",
+    updatedAt: "2026-05-09",
+    downloadUrl: "#download-ai-resource-navigation",
+  },
 ];

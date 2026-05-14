@@ -2,6 +2,7 @@ import { Bookmark, Compass, LogOut, Sparkles } from "lucide-react";
 import { redirect } from "next/navigation";
 import { auth, signOut } from "@/auth";
 import { CardShell } from "@/components/card-shell";
+import { isAdminEmail } from "@/lib/auth-utils";
 
 export const metadata = {
   title: "用户中心 | AI资源工作台",
@@ -15,6 +16,7 @@ export default async function DashboardPage() {
   }
 
   const name = session.user.name || session.user.email || "已登录用户";
+  const isAdmin = isAdminEmail(session.user.email);
 
   return (
     <main className="relative min-h-screen bg-[#070914] px-4 py-10 text-slate-100 sm:px-6 lg:px-8">
@@ -36,6 +38,19 @@ export default async function DashboardPage() {
                 这里是用户中心占位。后续可以扩展 AI资源收藏、工具订阅记录、
                 工作流学习进度和会员权益。
               </p>
+              <div className="mt-4 flex flex-wrap gap-2 text-xs text-slate-500">
+                <span className="rounded-md bg-white/5 px-2.5 py-1.5">
+                  权限：{isAdmin ? "管理员" : "普通用户"}
+                </span>
+                {isAdmin ? (
+                  <a
+                    href="/admin"
+                    className="rounded-md border border-emerald-300/20 bg-emerald-300/8 px-2.5 py-1.5 text-emerald-100 transition hover:border-emerald-300/40"
+                  >
+                    进入管理后台
+                  </a>
+                ) : null}
+              </div>
             </div>
 
             <form
@@ -62,6 +77,12 @@ export default async function DashboardPage() {
             <p className="mt-2 text-sm leading-6 text-slate-400">
               这里预留给 AI资源、提示词、工具评测文章的收藏列表。
             </p>
+            <a
+              href="/resources"
+              className="mt-4 inline-flex rounded-md bg-cyan-300 px-3 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200"
+            >
+              浏览资源下载
+            </a>
           </CardShell>
           <CardShell glow="violet">
             <Compass className="mb-4 text-violet-200" size={22} />
