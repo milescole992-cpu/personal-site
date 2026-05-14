@@ -1,4 +1,5 @@
 import { ArrowUpRight } from "lucide-react";
+import Link from "next/link";
 import { tools } from "@/data/mock";
 import { CardShell } from "./card-shell";
 import { SectionHeader } from "./section-header";
@@ -16,7 +17,7 @@ export function ToolGrid() {
         {tools.map((tool) => {
           const Icon = tool.icon;
           return (
-            <a key={tool.name} href="/resources">
+            <Link key={tool.name} href="/resources">
               <CardShell className="h-full p-4" glow="violet">
                 <div className="mb-4 flex items-center justify-between">
                   <span className="grid size-10 place-items-center rounded-md border border-violet-300/20 bg-violet-300/8 text-violet-100">
@@ -34,7 +35,7 @@ export function ToolGrid() {
                   {tool.description}
                 </p>
               </CardShell>
-            </a>
+            </Link>
           );
         })}
       </div>

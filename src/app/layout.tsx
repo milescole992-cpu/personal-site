@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { absoluteUrl, siteDescription, siteName, siteUrl } from "@/lib/seo";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -13,9 +14,25 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AI资源工作台 | 海外AI工具筛选与工作流教程",
-  description:
-    "面向普通人、内容创作者、AI工具玩家和副业创业者的AI资源分享、海外AI工具筛选与AI工作流教程。",
+  metadataBase: new URL(siteUrl),
+  title: {
+    default: `${siteName} | 海外AI工具筛选与工作流教程`,
+    template: `%s | ${siteName}`,
+  },
+  description: siteDescription,
+  openGraph: {
+    type: "website",
+    locale: "zh_CN",
+    url: absoluteUrl(),
+    siteName,
+    title: `${siteName} | 海外AI工具筛选与工作流教程`,
+    description: siteDescription,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: `${siteName} | 海外AI工具筛选与工作流教程`,
+    description: siteDescription,
+  },
 };
 
 export default function RootLayout({

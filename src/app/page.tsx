@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { ArticleList } from "@/components/article-list";
 import { FocusSection } from "@/components/focus-section";
 import { HeroSection } from "@/components/hero-section";
@@ -7,6 +8,27 @@ import { Sidebar } from "@/components/sidebar";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { ToolGrid } from "@/components/tool-grid";
+import { absoluteUrl, siteDescription, siteName } from "@/lib/seo";
+
+export const metadata: Metadata = {
+  title: "海外 AI 资源筛选与 AI 工作流分享站",
+  description: siteDescription,
+  alternates: {
+    canonical: absoluteUrl(),
+  },
+  openGraph: {
+    title: "海外 AI 资源筛选与 AI 工作流分享站",
+    description: siteDescription,
+    url: absoluteUrl(),
+    siteName,
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "海外 AI 资源筛选与 AI 工作流分享站",
+    description: siteDescription,
+  },
+};
 
 export default function Home() {
   return (

@@ -13,6 +13,7 @@ create table if not exists public.users (
 
 create table if not exists public.resources (
   id uuid primary key default gen_random_uuid(),
+  slug text unique,
   title text not null,
   description text not null,
   category text not null default 'AI资源',
@@ -44,6 +45,7 @@ create table if not exists public.favorites (
 );
 
 create index if not exists resources_published_at_idx on public.resources (published_at desc);
+create unique index if not exists resources_slug_idx on public.resources (slug);
 create index if not exists downloads_user_id_idx on public.downloads (user_id);
 create index if not exists downloads_resource_id_idx on public.downloads (resource_id);
 create index if not exists favorites_user_id_idx on public.favorites (user_id);

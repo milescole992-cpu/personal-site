@@ -1,6 +1,9 @@
 alter table public.resources
+add column if not exists slug text unique,
 add column if not exists audience text not null default '',
 add column if not exists use_cases text not null default '';
+
+create unique index if not exists resources_slug_idx on public.resources (slug);
 
 delete from public.resources
 where title in (
@@ -18,6 +21,7 @@ where title in (
 );
 
 insert into public.resources (
+  slug,
   title,
   description,
   category,
@@ -31,6 +35,7 @@ insert into public.resources (
   rating
 ) values
 (
+  'chatgpt-official-guide',
   'ChatGPT 官方入口与基础用法',
   '通用型 AI 助手入口，适合用来写作、总结、改写、头脑风暴、学习解释和轻量办公。建议作为新手第一个熟悉的 AI 工具。',
   '通用助手',
@@ -44,6 +49,7 @@ insert into public.resources (
   5
 ),
 (
+  'claude-longform-writing-analysis',
   'Claude 长文写作与资料分析',
   '偏长文本理解和结构化表达的 AI 助手，适合处理文章、文档、课程资料、产品文案和复杂思路梳理。',
   '通用助手',
@@ -57,6 +63,7 @@ insert into public.resources (
   5
 ),
 (
+  'perplexity-ai-search-research',
   'Perplexity AI 搜索研究助手',
   '带来源引用的 AI 搜索工具，适合快速了解一个新主题、做资料检索、对比观点和收集参考链接。',
   'AI搜索',
@@ -70,6 +77,7 @@ insert into public.resources (
   5
 ),
 (
+  'google-gemini-multimodal-assistant',
   'Google Gemini 多模态助手',
   'Google 的 AI 助手入口，适合结合 Google 生态做信息处理、图片理解、学习问答和日常任务规划。',
   '通用助手',
@@ -83,6 +91,7 @@ insert into public.resources (
   4
 ),
 (
+  'notebooklm-knowledge-base',
   'NotebookLM 资料型知识库',
   '面向资料阅读和知识整理的 AI 笔记工具，适合把文档、网页、视频等材料变成可提问的专题知识库。',
   '知识库',
@@ -96,6 +105,7 @@ insert into public.resources (
   5
 ),
 (
+  'canva-magic-studio-design',
   'Canva Magic Studio 设计工具箱',
   '适合非设计师快速完成封面、海报、社媒图、PPT 和品牌视觉素材的 AI 设计工具集合。',
   '设计创作',
@@ -109,6 +119,7 @@ insert into public.resources (
   4
 ),
 (
+  'midjourney-image-generation',
   'Midjourney 视觉灵感与图片生成',
   '高质量 AI 图片生成工具，适合做视觉探索、概念图、风格参考、海报灵感和创意素材测试。',
   '图片生成',
@@ -122,6 +133,7 @@ insert into public.resources (
   4
 ),
 (
+  'runway-ai-video-creation',
   'Runway AI 视频生成与编辑',
   '面向视频生成、镜头实验和创意剪辑的 AI 工具，适合短视频、广告分镜和视觉实验。',
   '视频创作',
@@ -135,6 +147,7 @@ insert into public.resources (
   4
 ),
 (
+  'elevenlabs-ai-voice',
   'ElevenLabs AI 语音与配音',
   'AI 语音生成和配音工具，适合做旁白、播客、课程音频、多语言配音和声音内容实验。',
   '音频创作',
@@ -148,6 +161,7 @@ insert into public.resources (
   4
 ),
 (
+  'hugging-face-open-source-ai',
   'Hugging Face 模型与开源社区',
   'AI 模型、数据集和开源应用社区，适合寻找模型 Demo、学习开源项目、验证技术方案和追踪 AI 生态。',
   '开发资源',

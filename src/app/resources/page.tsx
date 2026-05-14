@@ -9,6 +9,8 @@ import {
   Target,
   UsersRound,
 } from "lucide-react";
+import type { Metadata } from "next";
+import Link from "next/link";
 import { auth } from "@/auth";
 import {
   downloadResourceAction,
@@ -16,10 +18,29 @@ import {
 } from "@/app/actions/resources";
 import { CardShell } from "@/components/card-shell";
 import { getOrCreateUser, getResourcesForUser } from "@/lib/data";
+import { absoluteUrl, siteName } from "@/lib/seo";
 
-export const metadata = {
-  title: "资源下载 | AI资源工作台",
-  description: "AI资源、海外AI工具筛选表和AI工作流教程下载页。",
+const resourcesDescription =
+  "收录海外 AI 工具、AI 搜索、知识库、图片视频生成、语音配音和工作流资源，适合普通人、创作者和副业创业者长期收藏。";
+
+export const metadata: Metadata = {
+  title: "AI 资源库",
+  description: resourcesDescription,
+  alternates: {
+    canonical: absoluteUrl("/resources"),
+  },
+  openGraph: {
+    title: `AI 资源库 | ${siteName}`,
+    description: resourcesDescription,
+    url: absoluteUrl("/resources"),
+    siteName,
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: `AI 资源库 | ${siteName}`,
+    description: resourcesDescription,
+  },
 };
 
 export default async function ResourcesPage() {
@@ -135,9 +156,11 @@ export default async function ResourcesPage() {
                 </span>
               </div>
 
-              <h2 className="text-base font-semibold text-white">
-                {resource.title}
-              </h2>
+              <Link href={`/resources/${resource.slug}`} className="group">
+                <h2 className="text-base font-semibold text-white transition group-hover:text-cyan-100">
+                  {resource.title}
+                </h2>
+              </Link>
               <p className="mt-2 flex-1 text-sm leading-6 text-slate-400">
                 {resource.description}
               </p>
@@ -199,8 +222,14 @@ export default async function ResourcesPage() {
                   rel={resource.source_url ? "noreferrer" : undefined}
                   className="inline-flex flex-1 items-center justify-center gap-2 rounded-md border border-white/10 bg-white/6 px-3 py-2.5 text-sm font-semibold text-slate-100 transition hover:border-cyan-300/40 hover:bg-white/10"
                 >
-                  查看详情 <ArrowUpRight size={15} />
+                  官方来源 <ArrowUpRight size={15} />
                 </a>
+                <Link
+                  href={`/resources/${resource.slug}`}
+                  className="inline-flex flex-1 items-center justify-center gap-2 rounded-md border border-cyan-300/20 bg-cyan-300/8 px-3 py-2.5 text-sm font-semibold text-cyan-100 transition hover:border-cyan-300/40"
+                >
+                  资源详情 <FileText size={15} />
+                </Link>
                 {isLoggedIn ? (
                   <>
                     <form action={favoriteResourceAction.bind(null, resource.id)}>

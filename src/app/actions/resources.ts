@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { getOrCreateUser, getResourceById } from "@/lib/data";
 import { isAdminEmail } from "@/lib/auth-utils";
+import { createSlug } from "@/lib/slug";
 import { getSupabaseServiceClient } from "@/lib/supabase";
 
 function formText(formData: FormData, key: string) {
@@ -36,6 +37,7 @@ export async function createResourceAction(formData: FormData) {
   }
 
   const title = formText(formData, "title");
+  const slug = formText(formData, "slug");
   const description = formText(formData, "description");
   const category = formText(formData, "category") || "AI资源";
   const sourceUrl = formText(formData, "source_url");
@@ -49,6 +51,7 @@ export async function createResourceAction(formData: FormData) {
   }
 
   const { error } = await supabase.from("resources").insert({
+    slug: createSlug(slug || title),
     title,
     description,
     category,
@@ -69,6 +72,7 @@ export async function createResourceAction(formData: FormData) {
 
   revalidatePath("/admin");
   revalidatePath("/resources");
+  revalidatePath("/sitemap.xml");
   redirect("/admin?status=resource-created");
 }
 
@@ -98,7 +102,12 @@ export async function favoriteResourceAction(resourceId: string) {
     console.error("Failed to favorite resource", error.message);
   }
 
+  const resource = await getResourceById(resourceId);
+
   revalidatePath("/resources");
+  if (resource?.slug) {
+    revalidatePath(`/resources/${resource.slug}`);
+  }
   revalidatePath("/dashboard");
 }
 

@@ -144,6 +144,88 @@ export async function getResourceById(id: string) {
   return data;
 }
 
+export async function getResourceBySlug(slug: string, user?: DbUser | null) {
+  const supabase = getSupabaseServiceClient();
+
+  if (!supabase) {
+    return {
+      configured: false,
+      resource: null as ResourceWithState | null,
+      related: [] as Resource[],
+    };
+  }
+
+  const { data: resource, error } = await supabase
+    .from("resources")
+    .select("*")
+    .eq("slug", slug)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Failed to load resource by slug", error.message);
+    return { configured: true, resource: null, related: [] };
+  }
+
+  if (!resource) {
+    return { configured: true, resource: null, related: [] };
+  }
+
+  let isFavorite = false;
+
+  if (user) {
+    const { data: favorite, error: favoriteError } = await supabase
+      .from("favorites")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("resource_id", resource.id)
+      .maybeSingle();
+
+    if (favoriteError) {
+      console.error("Failed to load favorite state", favoriteError.message);
+    } else {
+      isFavorite = Boolean(favorite);
+    }
+  }
+
+  const { data: related, error: relatedError } = await supabase
+    .from("resources")
+    .select("*")
+    .eq("category", resource.category)
+    .neq("id", resource.id)
+    .order("rating", { ascending: false })
+    .limit(3);
+
+  if (relatedError) {
+    console.error("Failed to load related resources", relatedError.message);
+  }
+
+  return {
+    configured: true,
+    resource: { ...resource, isFavorite },
+    related: related ?? [],
+  };
+}
+
+export async function getAllResources() {
+  const supabase = getSupabaseServiceClient();
+
+  if (!supabase) {
+    return [] as Resource[];
+  }
+
+  const { data, error } = await supabase
+    .from("resources")
+    .select("*")
+    .order("published_at", { ascending: false });
+
+  if (error) {
+    console.error("Failed to load all resources", error.message);
+    return [];
+  }
+
+  return data ?? [];
+}
+
 export async function getDashboardData(user: DbUser | null) {
   const supabase = getSupabaseServiceClient();
 

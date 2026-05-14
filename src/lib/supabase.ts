@@ -13,6 +13,7 @@ export type DbUser = {
 
 export type Resource = {
   id: string;
+  slug: string | null;
   title: string;
   description: string;
   category: string;
