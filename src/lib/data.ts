@@ -260,7 +260,7 @@ export async function getHomeSections(includeInactive = false) {
   const supabase = getSupabaseServiceClient();
 
   if (!supabase) {
-    return defaultHomeSections;
+    return [] as HomeSection[];
   }
 
   let query = supabase
