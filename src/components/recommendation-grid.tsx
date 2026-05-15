@@ -39,6 +39,16 @@ export function RecommendationGrid({
               </a>
             </CardShell>
         ))}
+        {sections.length === 0 ? (
+          <CardShell>
+            <h3 className="text-base font-semibold text-white">
+              首页入口尚未配置
+            </h3>
+            <p className="mt-2 text-sm leading-6 text-slate-500">
+              管理员在后台“首页入口管理”新增入口后，这里会自动展示。
+            </p>
+          </CardShell>
+        ) : null}
       </div>
     </section>
   );

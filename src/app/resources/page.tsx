@@ -10,7 +10,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { auth } from "@/auth";
 import { CardShell } from "@/components/card-shell";
-import { getOrCreateUser, getResourcesForUser } from "@/lib/data";
+import { getOrCreateUser, getResourcesByPlacement } from "@/lib/data";
+import { isSupabaseConfigured } from "@/lib/supabase";
 import { absoluteUrl, siteName } from "@/lib/seo";
 import { getResourceSlug } from "@/lib/slug";
 
@@ -53,7 +54,8 @@ export default async function ResourcesPage({ searchParams }: ResourcesPageProps
   const user = session?.user ? await getOrCreateUser(session.user) : null;
   const params = (await searchParams) ?? {};
   const q = (params.q || "").trim().toLowerCase();
-  const { configured, resources } = await getResourcesForUser(user);
+  const resources = await getResourcesByPlacement("resources", user);
+  const configured = isSupabaseConfigured();
   const categories = Array.from(
     new Set(resources.map((resource) => resource.category)),
   );

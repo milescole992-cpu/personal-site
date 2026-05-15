@@ -20,9 +20,8 @@ function parseTags(value: string) {
     .filter(Boolean);
 }
 
-export async function createResourceAction(formData: FormData) {
+async function requireAdmin() {
   const session = await auth();
-  const supabase = getSupabaseServiceClient();
 
   if (!session?.user) {
     redirect("/login?callbackUrl=/admin");
@@ -31,70 +30,186 @@ export async function createResourceAction(formData: FormData) {
   if (!isAdminEmail(session.user.email)) {
     redirect("/");
   }
+}
+
+function revalidateContentPaths() {
+  revalidatePath("/");
+  revalidatePath("/admin");
+  revalidatePath("/resources");
+  revalidatePath("/tools");
+  revalidatePath("/roadmap");
+  revalidatePath("/workflows");
+  revalidatePath("/tutorials");
+  revalidatePath("/sitemap.xml");
+}
+
+function getPlacementIds(formData: FormData) {
+  return formData
+    .getAll("placement_ids")
+    .filter((value): value is string => typeof value === "string" && Boolean(value));
+}
+
+async function syncResourcePlacements(
+  resourceId: string,
+  placementIds: string[],
+  sortOrder: number,
+) {
+  const supabase = getSupabaseServiceClient();
+
+  if (!supabase) {
+    return;
+  }
+
+  await supabase
+    .from("content_placement_relations")
+    .delete()
+    .eq("resource_id", resourceId);
+
+  if (placementIds.length === 0) {
+    return;
+  }
+
+  const { error } = await supabase.from("content_placement_relations").insert(
+    placementIds.map((placementId) => ({
+      resource_id: resourceId,
+      placement_id: placementId,
+      sort_order: sortOrder,
+      is_active: true,
+    })),
+  );
+
+  if (error) {
+    console.error("Failed to sync resource placements", error.message);
+  }
+}
+
+function resourcePayload(formData: FormData) {
+  const title = formText(formData, "title");
+  const description = formText(formData, "description");
+  const category = formText(formData, "category") || "AI资源";
+  const officialUrl = formText(formData, "official_url") || formText(formData, "source_url");
+  const audience = formText(formData, "target_audience") || formText(formData, "audience");
+  const rating = Number(formData.get("rating") || 3);
+  const sortOrder = Number(formData.get("sort_order") || 100);
+  const beginnerLevel = Number(formData.get("beginner_friendly_level") || 3);
+
+  return {
+    title,
+    description,
+    content: formText(formData, "content") || null,
+    content_type_id: formText(formData, "content_type_id") || null,
+    category,
+    category_id: formText(formData, "category_id") || null,
+    tags: parseTags(formText(formData, "tags")),
+    source_url: officialUrl || null,
+    official_url: officialUrl || null,
+    download_url: formText(formData, "download_url") || null,
+    cover_image_url: formText(formData, "cover_image_url") || null,
+    audience,
+    target_audience: audience || null,
+    use_cases: formText(formData, "use_cases"),
+    pros: formText(formData, "pros") || null,
+    cons: formText(formData, "cons") || null,
+    beginner_friendly_level: Number.isFinite(beginnerLevel)
+      ? Math.min(Math.max(beginnerLevel, 1), 5)
+      : 3,
+    resource_type: formText(formData, "resource_type") || "resource",
+    is_featured: formData.get("is_featured") === "on",
+    is_hot: formData.get("is_hot") === "on",
+    is_published: formData.get("is_published") === "on",
+    requires_login: formData.get("requires_login") === "on",
+    sort_order: Number.isFinite(sortOrder) ? sortOrder : 100,
+    rating: Number.isFinite(rating) ? Math.min(Math.max(rating, 1), 5) : 3,
+    seo_title: formText(formData, "seo_title") || null,
+    seo_description: formText(formData, "seo_description") || null,
+  };
+}
+
+export async function createResourceAction(formData: FormData) {
+  await requireAdmin();
+  const supabase = getSupabaseServiceClient();
 
   if (!supabase) {
     redirect("/admin?status=supabase-not-configured");
   }
 
-  const title = formText(formData, "title");
   const slug = formText(formData, "slug");
-  const description = formText(formData, "description");
-  const category = formText(formData, "category") || "AI资源";
-  const sourceUrl = formText(formData, "source_url");
-  const downloadUrl = formText(formData, "download_url");
-  const audience = formText(formData, "audience");
-  const useCases = formText(formData, "use_cases");
-  const resourceType = formText(formData, "resource_type") || "resource";
-  const rating = Number(formData.get("rating") || 3);
+  const payload = resourcePayload(formData);
 
-  if (!title || !description) {
-    redirect("/admin?status=missing-resource-fields");
+  if (!payload.title || !payload.description) {
+    redirect("/admin?status=missing-resource-fields#content-publish");
   }
 
-  const fallbackResourceInput = {
-    title,
-    description,
-    category,
-    tags: parseTags(formText(formData, "tags")),
-    source_url: sourceUrl || null,
-    download_url: downloadUrl || null,
-    audience,
-    use_cases: useCases,
-    resource_type: resourceType,
-    is_featured: formData.get("is_featured") === "on",
-    is_hot: formData.get("is_hot") === "on",
-    is_published: formData.get("is_published") !== "off",
-    requires_login: formData.get("requires_login") === "on",
-    rating: Number.isFinite(rating) ? Math.min(Math.max(rating, 1), 5) : 3,
+  const resourceInput = {
+    slug: createSlug(slug || payload.title),
+    ...payload,
     published_at: new Date().toISOString(),
   };
-  const resourceInput = {
-    slug: createSlug(slug || title),
-    ...fallbackResourceInput,
-  };
 
-  const { error } = await supabase.from("resources").insert(resourceInput);
+  const { data, error } = await supabase
+    .from("resources")
+    .insert(resourceInput)
+    .select()
+    .single();
 
   if (error) {
-    if (!error.message.toLowerCase().includes("slug")) {
-      console.error("Failed to create resource", error.message);
-      redirect("/admin?status=create-resource-failed");
-    }
-
-    const { error: fallbackError } = await supabase
-      .from("resources")
-      .insert(fallbackResourceInput);
-
-    if (fallbackError) {
-      console.error("Failed to create resource", fallbackError.message);
-      redirect("/admin?status=create-resource-failed");
-    }
+    console.error("Failed to create resource", error.message);
+    redirect("/admin?status=create-resource-failed#content-publish");
   }
 
-  revalidatePath("/admin");
-  revalidatePath("/resources");
-  revalidatePath("/sitemap.xml");
-  redirect("/admin?status=resource-created");
+  await syncResourcePlacements(data.id, getPlacementIds(formData), payload.sort_order);
+
+  revalidateContentPaths();
+  redirect("/admin?status=resource-created#content-management");
+}
+
+export async function updateResourceAction(formData: FormData) {
+  await requireAdmin();
+  const supabase = getSupabaseServiceClient();
+  const id = formText(formData, "id");
+  const slug = formText(formData, "slug");
+  const payload = resourcePayload(formData);
+
+  if (!supabase || !id) {
+    redirect("/admin?status=resource-update-failed#content-management");
+  }
+
+  const { error } = await supabase
+    .from("resources")
+    .update({
+      slug: createSlug(slug || payload.title),
+      ...payload,
+    })
+    .eq("id", id);
+
+  if (error) {
+    console.error("Failed to update resource", error.message);
+    redirect("/admin?status=resource-update-failed#content-management");
+  }
+
+  await syncResourcePlacements(id, getPlacementIds(formData), payload.sort_order);
+  revalidateContentPaths();
+  redirect("/admin?status=resource-updated#content-management");
+}
+
+export async function deleteResourceAction(formData: FormData) {
+  await requireAdmin();
+  const supabase = getSupabaseServiceClient();
+  const id = formText(formData, "id");
+
+  if (!supabase || !id) {
+    redirect("/admin?status=resource-delete-failed#content-management");
+  }
+
+  const { error } = await supabase.from("resources").delete().eq("id", id);
+
+  if (error) {
+    console.error("Failed to delete resource", error.message);
+    redirect("/admin?status=resource-delete-failed#content-management");
+  }
+
+  revalidateContentPaths();
+  redirect("/admin?status=resource-deleted#content-management");
 }
 
 export async function favoriteResourceAction(resourceId: string) {

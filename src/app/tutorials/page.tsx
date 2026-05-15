@@ -17,6 +17,8 @@ export const metadata: Metadata = {
   },
 };
 
+export const dynamic = "force-dynamic";
+
 export default async function TutorialsPage() {
   const tutorials = await getResourcesByView("tutorials");
 
@@ -30,7 +32,7 @@ export default async function TutorialsPage() {
           </div>
           <h1 className="text-3xl font-semibold text-white">AI 教程</h1>
           <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-400">
-            这里是教程内容中心的第一阶段入口。后续可以扩展为文章、视频、附件和工作流步骤混合的 CMS 内容页。
+            这里只展示后台发布到“教程页”的内容。后续可以扩展为文章、视频、附件和工作流步骤混合的 CMS 内容页。
           </p>
         </CardShell>
         {tutorials.length > 0 ? (
@@ -43,7 +45,7 @@ export default async function TutorialsPage() {
           <CardShell>
             <h2 className="text-lg font-semibold text-white">教程内容正在搭建</h2>
             <p className="mt-2 text-sm leading-6 text-slate-400">
-              后台可以先把资源类型设置为 `tutorial`，页面会自动展示。
+              在后台新增内容，并选择发布位置“教程页”后，这里会自动展示。
             </p>
           </CardShell>
         )}

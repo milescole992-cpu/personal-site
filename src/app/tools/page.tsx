@@ -17,6 +17,8 @@ export const metadata: Metadata = {
   },
 };
 
+export const dynamic = "force-dynamic";
+
 export default async function ToolsPage() {
   const tools = await getResourcesByView("tools");
   const categories = Array.from(new Set(tools.map((item) => item.category)));
@@ -36,6 +38,7 @@ export default async function ToolsPage() {
           </p>
         </CardShell>
 
+        {tools.length > 0 ? (
         <CardShell className="p-4">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-center gap-3 text-sm text-slate-400">
@@ -54,12 +57,22 @@ export default async function ToolsPage() {
             </div>
           </div>
         </CardShell>
+        ) : null}
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {tools.map((resource) => (
-            <ResourceMiniCard key={resource.id} resource={resource} />
-          ))}
-        </div>
+        {tools.length > 0 ? (
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {tools.map((resource) => (
+              <ResourceMiniCard key={resource.id} resource={resource} />
+            ))}
+          </div>
+        ) : (
+          <CardShell>
+            <h2 className="text-lg font-semibold text-white">工具内容暂无发布</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-400">
+              在后台新增内容，并选择发布位置“AI工具页”后，这里会自动展示。
+            </p>
+          </CardShell>
+        )}
       </div>
     </main>
   );

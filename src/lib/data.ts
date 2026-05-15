@@ -2,6 +2,9 @@ import type { Session } from "next-auth";
 import {
   getSupabaseServiceClient,
   isSupabaseConfigured,
+  type ContentPlacement,
+  type ContentPlacementRelation,
+  type ContentType,
   type DbUser,
   type Download,
   type Favorite,
@@ -13,6 +16,10 @@ import { getResourceSlug } from "@/lib/slug";
 
 export type ResourceWithState = Resource & {
   isFavorite: boolean;
+};
+
+export type ResourceWithPlacements = Resource & {
+  placementIds: string[];
 };
 
 export type ActivityItem = {
@@ -145,10 +152,83 @@ export async function getHomeSections(includeInactive = false) {
 
   if (error) {
     console.error("Failed to load home sections", error.message);
-    return defaultHomeSections;
+    return [] as HomeSection[];
   }
 
-  return data?.length ? data : defaultHomeSections;
+  return data ?? [];
+}
+
+export async function getContentTypes(includeInactive = false) {
+  const supabase = getSupabaseServiceClient();
+
+  if (!supabase) {
+    return [] as ContentType[];
+  }
+
+  let query = supabase
+    .from("content_types")
+    .select("*")
+    .order("sort_order", { ascending: true });
+
+  if (!includeInactive) {
+    query = query.eq("is_active", true);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error("Failed to load content types", error.message);
+    return [];
+  }
+
+  return data ?? [];
+}
+
+export async function getContentPlacements(includeInactive = false) {
+  const supabase = getSupabaseServiceClient();
+
+  if (!supabase) {
+    return [] as ContentPlacement[];
+  }
+
+  let query = supabase
+    .from("content_placements")
+    .select("*")
+    .order("sort_order", { ascending: true });
+
+  if (!includeInactive) {
+    query = query.eq("is_active", true);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error("Failed to load content placements", error.message);
+    return [];
+  }
+
+  return data ?? [];
+}
+
+export async function getPlacementRelations() {
+  const supabase = getSupabaseServiceClient();
+
+  if (!supabase) {
+    return [] as ContentPlacementRelation[];
+  }
+
+  const { data, error } = await supabase
+    .from("content_placement_relations")
+    .select("*")
+    .eq("is_active", true)
+    .order("sort_order", { ascending: true });
+
+  if (error) {
+    console.error("Failed to load placement relations", error.message);
+    return [];
+  }
+
+  return data ?? [];
 }
 
 export async function syncUserFromSession(
@@ -225,6 +305,7 @@ export async function getResourcesForUser(user?: DbUser | null) {
   const { data, error } = await supabase
     .from("resources")
     .select("*")
+    .eq("is_published", true)
     .order("published_at", { ascending: false });
 
   if (error) {
@@ -256,35 +337,91 @@ export async function getResourcesForUser(user?: DbUser | null) {
   };
 }
 
+export async function getResourcesByPlacement(
+  placementSlug: string,
+  user?: DbUser | null,
+) {
+  const supabase = getSupabaseServiceClient();
+
+  if (!supabase) {
+    return [] as ResourceWithState[];
+  }
+
+  const { data: placement, error: placementError } = await supabase
+    .from("content_placements")
+    .select("*")
+    .eq("slug", placementSlug)
+    .eq("is_active", true)
+    .maybeSingle();
+
+  if (placementError || !placement) {
+    if (placementError) {
+      console.error("Failed to load placement", placementError.message);
+    }
+    return [];
+  }
+
+  const { data: relations, error: relationError } = await supabase
+    .from("content_placement_relations")
+    .select("*")
+    .eq("placement_id", placement.id)
+    .eq("is_active", true)
+    .order("sort_order", { ascending: true });
+
+  if (relationError) {
+    console.error("Failed to load placement content", relationError.message);
+    return [];
+  }
+
+  const resourceIds = relations?.map((item) => item.resource_id) ?? [];
+
+  if (resourceIds.length === 0) {
+    return [];
+  }
+
+  const { data: resources, error: resourceError } = await supabase
+    .from("resources")
+    .select("*")
+    .in("id", resourceIds)
+    .eq("is_published", true);
+
+  if (resourceError) {
+    console.error("Failed to load placement resources", resourceError.message);
+    return [];
+  }
+
+  let favoriteIds = new Set<string>();
+
+  if (user) {
+    const { data: favorites } = await supabase
+      .from("favorites")
+      .select("resource_id")
+      .eq("user_id", user.id);
+
+    favoriteIds = new Set(favorites?.map((item) => item.resource_id) ?? []);
+  }
+
+  const sortMap = new Map(
+    (relations ?? []).map((item) => [item.resource_id, item.sort_order]),
+  );
+
+  return (resources ?? [])
+    .map((resource) => ({
+      ...resource,
+      isFavorite: favoriteIds.has(resource.id),
+    }))
+    .sort(
+      (a, b) =>
+        (sortMap.get(a.id) ?? a.sort_order) - (sortMap.get(b.id) ?? b.sort_order),
+    );
+}
+
 export async function getResourcesByView(
   view: "tools" | "workflows" | "tutorials",
 ) {
-  const resources = await getAllResources();
-
-  if (view === "tools") {
-    return resources.filter(
-      (resource) =>
-        resource.resource_type === "tool" ||
-        resource.category.includes("工具") ||
-        resource.tags.some((tag) => tag.includes("工具") || tag.includes("AI")),
-    );
-  }
-
-  if (view === "workflows") {
-    return resources.filter(
-      (resource) =>
-        resource.resource_type === "workflow" ||
-        resource.category.includes("工作流") ||
-        resource.tags.some((tag) => tag.includes("工作流") || tag.includes("自动化")),
-    );
-  }
-
-  return resources.filter(
-    (resource) =>
-      resource.resource_type === "tutorial" ||
-      resource.category.includes("教程") ||
-      resource.tags.some((tag) => tag.includes("教程") || tag.includes("学习")),
-  );
+  const placementSlug =
+    view === "tools" ? "tools" : view === "workflows" ? "workflows" : "tutorials";
+  return getResourcesByPlacement(placementSlug);
 }
 
 export async function getResourceById(id: string) {
@@ -322,6 +459,7 @@ export async function getResourceBySlug(slug: string, user?: DbUser | null) {
   const { data: resources, error } = await supabase
     .from("resources")
     .select("*")
+    .eq("is_published", true)
     .order("published_at", { ascending: false });
 
   if (error) {
@@ -377,6 +515,7 @@ export async function getAllResources() {
   const { data, error } = await supabase
     .from("resources")
     .select("*")
+    .eq("is_published", true)
     .order("published_at", { ascending: false });
 
   if (error) {
@@ -461,6 +600,9 @@ export async function getAdminData() {
       downloads: [] as Download[],
       settings: defaultSiteSettings,
       homeSections: [] as HomeSection[],
+      contentTypes: [] as ContentType[],
+      contentPlacements: [] as ContentPlacement[],
+      placementRelations: [] as ContentPlacementRelation[],
     };
   }
 
@@ -470,6 +612,9 @@ export async function getAdminData() {
     { data: downloads },
     { data: settings },
     { data: homeSections },
+    { data: contentTypes },
+    { data: contentPlacements },
+    { data: placementRelations },
   ] = await Promise.all([
     supabase.from("users").select("*").order("created_at", {
       ascending: false,
@@ -484,6 +629,16 @@ export async function getAdminData() {
     supabase.from("home_sections").select("*").order("sort_order", {
       ascending: true,
     }),
+    supabase.from("content_types").select("*").order("sort_order", {
+      ascending: true,
+    }),
+    supabase.from("content_placements").select("*").order("sort_order", {
+      ascending: true,
+    }),
+    supabase
+      .from("content_placement_relations")
+      .select("*")
+      .order("sort_order", { ascending: true }),
   ]);
 
   return {
@@ -493,5 +648,8 @@ export async function getAdminData() {
     downloads: downloads ?? [],
     settings: settings ?? defaultSiteSettings,
     homeSections: homeSections ?? [],
+    contentTypes: contentTypes ?? [],
+    contentPlacements: contentPlacements ?? [],
+    placementRelations: placementRelations ?? [],
   };
 }

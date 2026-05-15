@@ -16,21 +16,66 @@ export type Resource = {
   slug: string | null;
   title: string;
   description: string;
+  content: string | null;
+  content_type_id: string | null;
+  category_id: string | null;
   category: string;
   tags: string[];
   source_url: string | null;
+  official_url: string | null;
   download_url: string | null;
+  cover_image_url: string | null;
   audience: string;
+  target_audience: string | null;
   use_cases: string;
+  pros: string | null;
+  cons: string | null;
+  beginner_friendly_level: number | null;
   resource_type: string;
   is_featured: boolean;
   is_hot: boolean;
   is_published: boolean;
+  sort_order: number;
   seo_title: string | null;
   seo_description: string | null;
   requires_login: boolean;
   published_at: string;
   rating: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ContentType = {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  icon: string | null;
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ContentPlacement = {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  page_path: string;
+  placement_key: string;
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ContentPlacementRelation = {
+  id: string;
+  resource_id: string;
+  placement_id: string;
+  sort_order: number;
+  is_active: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -103,6 +148,41 @@ type Database = {
           description: string;
         };
         Update: Partial<Resource>;
+        Relationships: [];
+      };
+      content_types: {
+        Row: ContentType;
+        Insert: Omit<Partial<ContentType>, "id" | "created_at" | "updated_at"> & {
+          name: string;
+          slug: string;
+        };
+        Update: Partial<ContentType>;
+        Relationships: [];
+      };
+      content_placements: {
+        Row: ContentPlacement;
+        Insert: Omit<
+          Partial<ContentPlacement>,
+          "id" | "created_at" | "updated_at"
+        > & {
+          name: string;
+          slug: string;
+          page_path: string;
+          placement_key: string;
+        };
+        Update: Partial<ContentPlacement>;
+        Relationships: [];
+      };
+      content_placement_relations: {
+        Row: ContentPlacementRelation;
+        Insert: Omit<
+          Partial<ContentPlacementRelation>,
+          "id" | "created_at" | "updated_at"
+        > & {
+          resource_id: string;
+          placement_id: string;
+        };
+        Update: Partial<ContentPlacementRelation>;
         Relationships: [];
       };
       site_settings: {

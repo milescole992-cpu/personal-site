@@ -42,8 +42,8 @@ export async function generateMetadata({
     };
   }
 
-  const title = `${resource.title} | AI资源详情`;
-  const description = resource.description;
+  const title = resource.seo_title || `${resource.title} | AI资源详情`;
+  const description = resource.seo_description || resource.description;
   const url = absoluteUrl(`/resources/${getResourceSlug(resource)}`);
 
   return {
@@ -148,14 +148,16 @@ export default async function ResourceDetailPage({
                 </div>
 
                 <div className="space-y-3 rounded-md border border-white/10 bg-black/24 p-4">
-                  <a
-                    href={resource.source_url || "#"}
-                    target={resource.source_url ? "_blank" : undefined}
-                    rel={resource.source_url ? "noreferrer" : undefined}
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-white/10 bg-white/6 px-3 py-2.5 text-sm font-semibold text-slate-100 transition hover:border-cyan-300/40 hover:bg-white/10"
-                  >
-                    来源链接 <ArrowUpRight size={15} />
-                  </a>
+                  {resource.official_url || resource.source_url ? (
+                    <a
+                      href={resource.official_url || resource.source_url || ""}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-white/10 bg-white/6 px-3 py-2.5 text-sm font-semibold text-slate-100 transition hover:border-cyan-300/40 hover:bg-white/10"
+                    >
+                      来源链接 <ArrowUpRight size={15} />
+                    </a>
+                  ) : null}
 
                   {isLoggedIn ? (
                     <>
@@ -198,7 +200,7 @@ export default async function ResourceDetailPage({
                   适合人群
                 </div>
                 <p className="text-sm leading-7 text-slate-400">
-                  {resource.audience || "待补充"}
+                  {resource.target_audience || resource.audience || "待补充"}
                 </p>
               </CardShell>
               <CardShell className="p-5">
@@ -211,6 +213,44 @@ export default async function ResourceDetailPage({
                 </p>
               </CardShell>
             </div>
+
+            {resource.content || resource.pros || resource.cons ? (
+              <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
+                {resource.content ? (
+                  <CardShell className="p-5">
+                    <p className="mb-1 font-mono text-[11px] uppercase tracking-[0.28em] text-cyan-300/70">
+                      Content
+                    </p>
+                    <h2 className="text-lg font-semibold text-white">内容详情</h2>
+                    <div className="mt-3 whitespace-pre-wrap text-sm leading-7 text-slate-400">
+                      {resource.content}
+                    </div>
+                  </CardShell>
+                ) : null}
+                {resource.pros || resource.cons ? (
+                  <div className="space-y-4">
+                    {resource.pros ? (
+                      <CardShell className="p-5">
+                        <h2 className="text-base font-semibold text-white">优点</h2>
+                        <p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-slate-400">
+                          {resource.pros}
+                        </p>
+                      </CardShell>
+                    ) : null}
+                    {resource.cons ? (
+                      <CardShell className="p-5">
+                        <h2 className="text-base font-semibold text-white">
+                          注意事项
+                        </h2>
+                        <p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-slate-400">
+                          {resource.cons}
+                        </p>
+                      </CardShell>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
 
             <CardShell className="p-5">
               <div className="mb-4 flex items-end justify-between gap-4">

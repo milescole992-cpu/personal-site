@@ -12,6 +12,11 @@ function formText(formData: FormData, key: string) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function formNumber(formData: FormData, key: string, fallback = 100) {
+  const value = Number(formData.get(key) || fallback);
+  return Number.isFinite(value) ? value : fallback;
+}
+
 async function requireAdmin() {
   const session = await auth();
 
@@ -27,6 +32,7 @@ async function requireAdmin() {
 function revalidateCmsPaths() {
   revalidatePath("/");
   revalidatePath("/admin");
+  revalidatePath("/resources");
   revalidatePath("/tools");
   revalidatePath("/roadmap");
   revalidatePath("/workflows");
@@ -90,7 +96,7 @@ export async function updateSiteSettingsAction(formData: FormData) {
   }
 
   revalidateCmsPaths();
-  redirect("/admin?status=settings-saved");
+  redirect("/admin?status=settings-saved#site-settings");
 }
 
 export async function createHomeSectionAction(formData: FormData) {
@@ -106,7 +112,7 @@ export async function createHomeSectionAction(formData: FormData) {
   const href = formText(formData, "href");
 
   if (!title || !description || !href) {
-    redirect("/admin?status=home-section-missing");
+    redirect("/admin?status=home-section-missing#home-sections");
   }
 
   const { error } = await supabase.from("home_sections").insert({
@@ -123,11 +129,11 @@ export async function createHomeSectionAction(formData: FormData) {
 
   if (error) {
     console.error("Failed to create home section", error.message);
-    redirect("/admin?status=home-section-failed");
+    redirect("/admin?status=home-section-failed#home-sections");
   }
 
   revalidateCmsPaths();
-  redirect("/admin?status=home-section-created");
+  redirect("/admin?status=home-section-created#home-sections");
 }
 
 export async function updateHomeSectionAction(formData: FormData) {
@@ -141,7 +147,7 @@ export async function updateHomeSectionAction(formData: FormData) {
   const id = formText(formData, "id");
 
   if (!id) {
-    redirect("/admin?status=home-section-missing-id");
+    redirect("/admin?status=home-section-missing-id#home-sections");
   }
 
   const { error } = await supabase
@@ -161,9 +167,179 @@ export async function updateHomeSectionAction(formData: FormData) {
 
   if (error) {
     console.error("Failed to update home section", error.message);
-    redirect("/admin?status=home-section-update-failed");
+    redirect("/admin?status=home-section-update-failed#home-sections");
   }
 
   revalidateCmsPaths();
-  redirect("/admin?status=home-section-updated");
+  redirect("/admin?status=home-section-updated#home-sections");
+}
+
+export async function createContentTypeAction(formData: FormData) {
+  await requireAdmin();
+  const supabase = getSupabaseServiceClient();
+
+  if (!supabase) {
+    redirect("/admin?status=supabase-not-configured#content-types");
+  }
+
+  const name = formText(formData, "name");
+  const slug = formText(formData, "slug");
+
+  if (!name || !slug) {
+    redirect("/admin?status=content-type-missing#content-types");
+  }
+
+  const { error } = await supabase.from("content_types").insert({
+    name,
+    slug,
+    description: formText(formData, "description") || null,
+    icon: formText(formData, "icon") || null,
+    sort_order: formNumber(formData, "sort_order"),
+    is_active: formData.get("is_active") === "on",
+  });
+
+  if (error) {
+    console.error("Failed to create content type", error.message);
+    redirect("/admin?status=content-type-failed#content-types");
+  }
+
+  revalidateCmsPaths();
+  redirect("/admin?status=content-type-created#content-types");
+}
+
+export async function updateContentTypeAction(formData: FormData) {
+  await requireAdmin();
+  const supabase = getSupabaseServiceClient();
+  const id = formText(formData, "id");
+
+  if (!supabase || !id) {
+    redirect("/admin?status=content-type-update-failed#content-types");
+  }
+
+  const { error } = await supabase
+    .from("content_types")
+    .update({
+      name: formText(formData, "name"),
+      slug: formText(formData, "slug"),
+      description: formText(formData, "description") || null,
+      icon: formText(formData, "icon") || null,
+      sort_order: formNumber(formData, "sort_order"),
+      is_active: formData.get("is_active") === "on",
+    })
+    .eq("id", id);
+
+  if (error) {
+    console.error("Failed to update content type", error.message);
+    redirect("/admin?status=content-type-update-failed#content-types");
+  }
+
+  revalidateCmsPaths();
+  redirect("/admin?status=content-type-updated#content-types");
+}
+
+export async function deleteContentTypeAction(formData: FormData) {
+  await requireAdmin();
+  const supabase = getSupabaseServiceClient();
+  const id = formText(formData, "id");
+
+  if (!supabase || !id) {
+    redirect("/admin?status=content-type-delete-failed#content-types");
+  }
+
+  const { error } = await supabase.from("content_types").delete().eq("id", id);
+
+  if (error) {
+    console.error("Failed to delete content type", error.message);
+    redirect("/admin?status=content-type-delete-failed#content-types");
+  }
+
+  revalidateCmsPaths();
+  redirect("/admin?status=content-type-deleted#content-types");
+}
+
+export async function createPlacementAction(formData: FormData) {
+  await requireAdmin();
+  const supabase = getSupabaseServiceClient();
+
+  if (!supabase) {
+    redirect("/admin?status=supabase-not-configured#placements");
+  }
+
+  const name = formText(formData, "name");
+  const slug = formText(formData, "slug");
+  const pagePath = formText(formData, "page_path");
+  const placementKey = formText(formData, "placement_key");
+
+  if (!name || !slug || !pagePath || !placementKey) {
+    redirect("/admin?status=placement-missing#placements");
+  }
+
+  const { error } = await supabase.from("content_placements").insert({
+    name,
+    slug,
+    description: formText(formData, "description") || null,
+    page_path: pagePath,
+    placement_key: placementKey,
+    sort_order: formNumber(formData, "sort_order"),
+    is_active: formData.get("is_active") === "on",
+  });
+
+  if (error) {
+    console.error("Failed to create placement", error.message);
+    redirect("/admin?status=placement-failed#placements");
+  }
+
+  revalidateCmsPaths();
+  redirect("/admin?status=placement-created#placements");
+}
+
+export async function updatePlacementAction(formData: FormData) {
+  await requireAdmin();
+  const supabase = getSupabaseServiceClient();
+  const id = formText(formData, "id");
+
+  if (!supabase || !id) {
+    redirect("/admin?status=placement-update-failed#placements");
+  }
+
+  const { error } = await supabase
+    .from("content_placements")
+    .update({
+      name: formText(formData, "name"),
+      slug: formText(formData, "slug"),
+      description: formText(formData, "description") || null,
+      page_path: formText(formData, "page_path"),
+      placement_key: formText(formData, "placement_key"),
+      sort_order: formNumber(formData, "sort_order"),
+      is_active: formData.get("is_active") === "on",
+    })
+    .eq("id", id);
+
+  if (error) {
+    console.error("Failed to update placement", error.message);
+    redirect("/admin?status=placement-update-failed#placements");
+  }
+
+  revalidateCmsPaths();
+  redirect("/admin?status=placement-updated#placements");
+}
+
+export async function deletePlacementAction(formData: FormData) {
+  await requireAdmin();
+  const supabase = getSupabaseServiceClient();
+  const id = formText(formData, "id");
+
+  if (!supabase || !id) {
+    redirect("/admin?status=placement-delete-failed#placements");
+  }
+
+  const { error } = await supabase.from("content_placements").delete().eq("id", id);
+
+  if (error) {
+    console.error("Failed to delete placement", error.message);
+    redirect("/admin?status=placement-delete-failed#placements");
+  }
+
+  revalidateCmsPaths();
+  redirect("/admin?status=placement-deleted#placements");
 }

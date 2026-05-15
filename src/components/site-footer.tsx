@@ -1,4 +1,5 @@
 import type { SiteSettings } from "@/lib/supabase";
+import Link from "next/link";
 
 export function SiteFooter({ settings }: { settings: SiteSettings }) {
   return (
@@ -8,15 +9,12 @@ export function SiteFooter({ settings }: { settings: SiteSettings }) {
           © 2026 {settings.brand_name}。{settings.footer_description}
         </p>
         <div className="flex gap-4">
-          <a href="#" className="transition hover:text-cyan-100">
-            RSS
-          </a>
           <a href="/sitemap.xml" className="transition hover:text-cyan-100">
             Sitemap
           </a>
-          <a href="#" className="transition hover:text-cyan-100">
-            About
-          </a>
+          <Link href="/resources" className="transition hover:text-cyan-100">
+            Resources
+          </Link>
         </div>
       </div>
     </footer>

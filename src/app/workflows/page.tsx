@@ -17,6 +17,8 @@ export const metadata: Metadata = {
   },
 };
 
+export const dynamic = "force-dynamic";
+
 export default async function WorkflowsPage() {
   const workflows = await getResourcesByView("workflows");
 
@@ -30,8 +32,7 @@ export default async function WorkflowsPage() {
           </div>
           <h1 className="text-3xl font-semibold text-white">AI 工作流</h1>
           <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-400">
-            当前优先展示资源库中与工作流、自动化和内容生产有关的条目。
-            第二阶段会扩展独立工作流模型和分步骤教程内容。
+            这里只展示后台发布到“工作流页”的内容。第二阶段会扩展独立工作流模型和分步骤教程内容。
           </p>
         </CardShell>
         {workflows.length > 0 ? (
@@ -44,7 +45,7 @@ export default async function WorkflowsPage() {
           <CardShell>
             <h2 className="text-lg font-semibold text-white">工作流内容正在搭建</h2>
             <p className="mt-2 text-sm leading-6 text-slate-400">
-              后台可以先把资源类型设置为 `workflow`，页面会自动展示。
+              在后台新增内容，并选择发布位置“工作流页”后，这里会自动展示。
             </p>
           </CardShell>
         )}
