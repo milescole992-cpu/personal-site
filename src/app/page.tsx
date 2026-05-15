@@ -91,7 +91,11 @@ export default async function Home() {
             {featuredResources.length > 0 ? (
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                 {featuredResources.slice(0, 4).map((resource) => (
-                  <ResourceMiniCard key={resource.id} resource={resource} />
+                  <ResourceMiniCard
+                    key={resource.id}
+                    resource={resource}
+                    showFeaturedBadge={false}
+                  />
                 ))}
               </div>
             ) : (
@@ -109,7 +113,11 @@ export default async function Home() {
               </div>
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {hotResources.slice(0, 6).map((resource) => (
-                  <ResourceMiniCard key={resource.id} resource={resource} />
+                  <ResourceMiniCard
+                    key={resource.id}
+                    resource={resource}
+                    showFeaturedBadge={false}
+                  />
                 ))}
               </div>
             </section>
@@ -125,7 +133,11 @@ export default async function Home() {
               </div>
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {latestResources.slice(0, 6).map((resource) => (
-                  <ResourceMiniCard key={resource.id} resource={resource} />
+                  <ResourceMiniCard
+                    key={resource.id}
+                    resource={resource}
+                    showFeaturedBadge={false}
+                  />
                 ))}
               </div>
             </section>

@@ -8,6 +8,10 @@ import { isAdminEmail } from "@/lib/auth-utils";
 import { createSlug, getResourceSlug } from "@/lib/slug";
 import { getSupabaseServiceClient } from "@/lib/supabase";
 
+const HOME_FEATURED_PLACEMENT = "home-featured";
+const HOME_HOT_PLACEMENT = "home-hot";
+const HOME_FLAG_PLACEMENTS = [HOME_FEATURED_PLACEMENT, HOME_HOT_PLACEMENT];
+
 function formText(formData: FormData, key: string) {
   const value = formData.get(key);
   return typeof value === "string" ? value.trim() : "";
@@ -87,6 +91,67 @@ async function syncResourcePlacements(
   }
 }
 
+async function resolvePlacementIds({
+  selectedPlacementIds,
+  isFeatured,
+  isHot,
+}: {
+  selectedPlacementIds: string[];
+  isFeatured: boolean;
+  isHot: boolean;
+}) {
+  const supabase = getSupabaseServiceClient();
+
+  if (!supabase) {
+    return selectedPlacementIds;
+  }
+
+  const { data, error } = await supabase
+    .from("content_placements")
+    .select("id, slug")
+    .in("slug", HOME_FLAG_PLACEMENTS);
+
+  if (error) {
+    console.error("Failed to load home placements", error.message);
+    return selectedPlacementIds;
+  }
+
+  const homePlacementIds = new Set((data ?? []).map((placement) => placement.id));
+  const bySlug = new Map((data ?? []).map((placement) => [placement.slug, placement.id]));
+  const resolved = selectedPlacementIds.filter((id) => !homePlacementIds.has(id));
+
+  if (isFeatured && bySlug.has(HOME_FEATURED_PLACEMENT)) {
+    resolved.push(bySlug.get(HOME_FEATURED_PLACEMENT)!);
+  }
+
+  if (isHot && bySlug.has(HOME_HOT_PLACEMENT)) {
+    resolved.push(bySlug.get(HOME_HOT_PLACEMENT)!);
+  }
+
+  return [...new Set(resolved)];
+}
+
+async function getCurrentPlacementIds(resourceId: string) {
+  const supabase = getSupabaseServiceClient();
+
+  if (!supabase) {
+    return [] as string[];
+  }
+
+  const { data, error } = await supabase
+    .from("content_placement_relations")
+    .select("placement_id")
+    .eq("resource_id", resourceId)
+    .eq("is_active", true);
+
+  if (error) {
+    console.error("Failed to load current placements", error.message);
+    return [];
+  }
+
+  return data?.map((relation) => relation.placement_id) ?? [];
+}
+
 function resourcePayload(formData: FormData) {
   const title = formText(formData, "title");
   const description = formText(formData, "description");
@@ -161,7 +226,15 @@ export async function createResourceAction(formData: FormData) {
     adminRedirect("create-resource-failed", "content-publish");
   }
 
-  await syncResourcePlacements(data.id, getPlacementIds(formData), payload.sort_order);
+  await syncResourcePlacements(
+    data.id,
+    await resolvePlacementIds({
+      selectedPlacementIds: getPlacementIds(formData),
+      isFeatured: payload.is_featured,
+      isHot: payload.is_hot,
+    }),
+    payload.sort_order,
+  );
 
   revalidateContentPaths();
   adminRedirect(
@@ -194,7 +267,15 @@ export async function updateResourceAction(formData: FormData) {
     adminRedirect("resource-update-failed");
   }
 
-  await syncResourcePlacements(id, getPlacementIds(formData), payload.sort_order);
+  await syncResourcePlacements(
+    id,
+    await resolvePlacementIds({
+      selectedPlacementIds: getPlacementIds(formData),
+      isFeatured: payload.is_featured,
+      isHot: payload.is_hot,
+    }),
+    payload.sort_order,
+  );
   revalidateContentPaths();
   adminRedirect("resource-updated", "content-management");
 }
@@ -253,6 +334,33 @@ export async function quickUpdateResourceAction(formData: FormData) {
   if (error) {
     console.error("Failed to quick update resource", error.message);
     adminRedirect("resource-update-failed");
+  }
+
+  if (["feature", "unfeature", "hot", "unhot"].includes(operation)) {
+    const resource = await getResourceById(id);
+    const placementIds = await getCurrentPlacementIds(id);
+
+    if (resource) {
+      await syncResourcePlacements(
+        id,
+        await resolvePlacementIds({
+          selectedPlacementIds: placementIds,
+          isFeatured:
+            operation === "feature"
+              ? true
+              : operation === "unfeature"
+                ? false
+                : resource.is_featured,
+          isHot:
+            operation === "hot"
+              ? true
+              : operation === "unhot"
+                ? false
+                : resource.is_hot,
+        }),
+        resource.sort_order,
+      );
+    }
   }
 
   revalidateContentPaths();

@@ -2,7 +2,13 @@ import Link from "next/link";
 import type { Resource } from "@/lib/supabase";
 import { getResourceSlug } from "@/lib/slug";
 
-export function ResourceMiniCard({ resource }: { resource: Resource }) {
+export function ResourceMiniCard({
+  resource,
+  showFeaturedBadge = true,
+}: {
+  resource: Resource;
+  showFeaturedBadge?: boolean;
+}) {
   return (
     <Link
       href={`/resources/${getResourceSlug(resource)}`}
@@ -15,7 +21,7 @@ export function ResourceMiniCard({ resource }: { resource: Resource }) {
         <span className="rounded-md bg-white/5 px-2 py-1 text-xs text-slate-500">
           推荐 {resource.rating}/5
         </span>
-        {resource.is_featured ? (
+        {showFeaturedBadge && resource.is_featured ? (
           <span className="rounded-md bg-amber-300/8 px-2 py-1 text-xs text-amber-100">
             推荐
           </span>

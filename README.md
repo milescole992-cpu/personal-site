@@ -1,34 +1,63 @@
-# 示例个人网站首页
+# AI 资源分享站 CMS
 
-一个基于 Next.js、React、Tailwind CSS、TypeScript 的个人博客 / 工具导航首页骨架。当前内容全部来自本地 mock 数据，不包含真实隐私信息、真实联系方式或真实头像。
+基于 Next.js App Router、TypeScript、Tailwind CSS、Auth.js 和 Supabase 的 AI 资源内容站。前端只负责展示，首页文案、首页入口、栏目页配置、资源内容和发布位置都由 Supabase 驱动。
 
-## 运行
+## 本地运行
 
 ```bash
 npm install
 npm run dev
 ```
 
-打开 `http://127.0.0.1:3000` 或 `http://localhost:3000` 查看首页。
+打开 `http://localhost:3000`。
 
-## 构建检查
+## 环境变量
+
+复制 `.env.example` 为 `.env.local`，并填写：
+
+```bash
+AUTH_SECRET=
+AUTH_GITHUB_ID=
+AUTH_GITHUB_SECRET=
+AUTH_URL=http://localhost:3000
+ADMIN_EMAILS=
+
+SUPABASE_URL=
+SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+```
+
+不要提交 `.env.local`。
+
+## 数据库迁移
+
+在 Supabase SQL Editor 里按需执行：
+
+- `supabase/schema.sql`：基础用户、资源、下载、收藏表
+- `supabase/cms_phase1.sql`：站点设置和首页入口
+- `supabase/cms_content_model.sql`：内容类型、发布位置、内容与发布位置关系
+- `supabase/content_pages.sql`：栏目页 CMS 配置
+
+## CMS 模型
+
+- `site_settings`：首页 Hero、SEO、品牌和 Footer 文案
+- `home_sections`：首页核心入口卡片，前台只读取 `section_type = homepage_entry`
+- `content_pages`：二级栏目页配置，例如 `/resources`、`/tools`、`/roadmap`
+- `content_placements`：内容来源位置，例如资源库、AI 工具页、首页精选、首页热门
+- `content_placement_relations`：内容和发布位置的多对多关系
+- `resources`：统一内容表，资源、工具、教程、工作流第一阶段都存在这里
+
+首页精选、热门、最新只读取对应发布位置：
+
+- `home-featured`
+- `home-hot`
+- `home-latest`
+
+后台勾选“推荐”会自动同步到 `home-featured`，勾选“热门”会自动同步到 `home-hot`。首页入口不是发布位置，需要在“首页管理”里维护。
+
+## 检查
 
 ```bash
 npm run lint
 npm run build
 ```
-
-## 内容替换
-
-主要占位内容集中在 `src/data/mock.ts`：
-
-- `navItems`：顶部导航
-- `recommendedLinks`：推荐入口卡片
-- `latestArticles`：最新文章列表
-- `hotArticles`：热门文章列表
-- `tools`：工具导航
-- `tags`：标签云
-- `stats`：网站统计
-- `profileLinks`：侧边栏快捷入口
-
-首页结构在 `src/app/page.tsx`，组件在 `src/components`。后期接数据库时，可以先保持组件不变，只把 `src/data/mock.ts` 替换为接口或服务端数据读取。

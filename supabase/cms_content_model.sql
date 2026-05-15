@@ -149,7 +149,7 @@ insert into public.content_placement_relations (resource_id, placement_id, sort_
 select r.id, p.id, r.sort_order, true
 from public.resources r
 join public.content_placements p on p.slug = 'home-featured'
-where r.is_featured = true or r.rating >= 5
+where r.is_featured = true
 on conflict (resource_id, placement_id) do nothing;
 
 insert into public.content_placement_relations (resource_id, placement_id, sort_order, is_active)
@@ -157,4 +157,13 @@ select r.id, p.id, r.sort_order, true
 from public.resources r
 join public.content_placements p on p.slug = 'home-hot'
 where r.is_hot = true
+on conflict (resource_id, placement_id) do nothing;
+
+insert into public.content_placement_relations (resource_id, placement_id, sort_order, is_active)
+select r.id, p.id, (row_number() over (order by r.published_at desc))::integer, true
+from public.resources r
+join public.content_placements p on p.slug = 'home-latest'
+where r.is_published = true
+order by r.published_at desc
+limit 6
 on conflict (resource_id, placement_id) do nothing;

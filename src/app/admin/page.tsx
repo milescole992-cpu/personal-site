@@ -335,31 +335,42 @@ function PlacementChecklist({
 }) {
   return (
     <div className="grid gap-2 md:grid-cols-2">
-      {placements.map((placement) => (
-        <label
-          key={placement.id}
-          className="flex items-start gap-3 rounded-md border border-white/10 bg-white/[0.03] p-3 text-sm text-slate-300"
-        >
-          <input
-            name="placement_ids"
-            type="checkbox"
-            value={placement.id}
-            defaultChecked={selectedIds?.has(placement.id)}
-            className="mt-1 size-4 accent-cyan-300"
-          />
-          <span>
-            <span className="block font-medium text-white">{placement.name}</span>
-            <span className="mt-1 block text-xs leading-5 text-slate-500">
-              显示到 {placement.page_path} · 模块 key：{placement.placement_key}
-            </span>
-            {placement.description ? (
+      {placements.map((placement) => {
+        const controlledByFlag =
+          placement.slug === "home-featured" || placement.slug === "home-hot";
+
+        return (
+          <label
+            key={placement.id}
+            className="flex items-start gap-3 rounded-md border border-white/10 bg-white/[0.03] p-3 text-sm text-slate-300"
+          >
+            <input
+              name="placement_ids"
+              type="checkbox"
+              value={placement.id}
+              defaultChecked={selectedIds?.has(placement.id)}
+              disabled={controlledByFlag}
+              className="mt-1 size-4 accent-cyan-300 disabled:opacity-45"
+            />
+            <span>
+              <span className="block font-medium text-white">{placement.name}</span>
               <span className="mt-1 block text-xs leading-5 text-slate-500">
-                {placement.description}
+                显示到 {placement.page_path} · 模块 key：{placement.placement_key}
               </span>
-            ) : null}
-          </span>
-        </label>
-      ))}
+              {controlledByFlag ? (
+                <span className="mt-1 block text-xs leading-5 text-cyan-200">
+                  由下方“推荐/热门”勾选自动控制，不需要在这里手动选择。
+                </span>
+              ) : null}
+              {placement.description ? (
+                <span className="mt-1 block text-xs leading-5 text-slate-500">
+                  {placement.description}
+                </span>
+              ) : null}
+            </span>
+          </label>
+        );
+      })}
       {placements.length === 0 ? (
         <p className="rounded-md border border-pink-300/20 bg-pink-300/8 p-3 text-sm text-pink-100">
           还没有可用发布位置。请先到“发布位置管理”新增资源库、首页精选等位置。
@@ -727,7 +738,7 @@ function ResourceEditor({
       <div className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
         <h3 className="text-sm font-semibold text-white">发布状态与展示属性</h3>
         <p className="mt-1 text-xs leading-5 text-slate-500">
-          已发布才会进入前台；推荐和热门只是展示属性，仍需要选择对应发布位置。
+          已发布才会进入前台；勾选推荐会自动同步到“首页精选”，勾选热门会自动同步到“首页热门”。其他栏目仍通过上方发布位置控制。
         </p>
         <div className="mt-4 flex flex-wrap gap-4 text-sm text-slate-300">
           <label className="flex items-center gap-2">
