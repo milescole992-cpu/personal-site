@@ -331,6 +331,64 @@ function FieldHelp({
   );
 }
 
+function LinkPicker({
+  name,
+  label,
+  description,
+  placeholder,
+  frontPosition,
+  contentPages,
+  defaultValue = "",
+  required = false,
+}: {
+  name: string;
+  label: string;
+  description: string;
+  placeholder: string;
+  frontPosition: string;
+  contentPages: ContentPage[];
+  defaultValue?: string;
+  required?: boolean;
+}) {
+  const matchedPage = contentPages.find((page) => page.page_path === defaultValue);
+  const customValue = matchedPage ? "" : defaultValue;
+
+  return (
+    <FieldHelp
+      label={label}
+      required={required}
+      description={description}
+      placeholder={placeholder}
+      frontPosition={frontPosition}
+    >
+      <div className="grid gap-2">
+        <select
+          name={`${name}_select`}
+          defaultValue={matchedPage?.page_path ?? ""}
+          className={fieldClass()}
+        >
+          <option value="">从已创建栏目里选择</option>
+          {contentPages.map((page) => (
+            <option key={page.id} value={page.page_path}>
+              {page.title} · {page.page_path}
+            </option>
+          ))}
+        </select>
+        <input
+          name={name}
+          defaultValue={customValue}
+          required={required && contentPages.length === 0}
+          placeholder={placeholder}
+          className={fieldClass()}
+        />
+        <span className="text-xs leading-5 text-slate-600">
+          优先使用上面的下拉选择；如果要跳转到自定义路径，再填写下面这个输入框。
+        </span>
+      </div>
+    </FieldHelp>
+  );
+}
+
 function SectionHeader({
   eyebrow,
   title,
@@ -1307,49 +1365,76 @@ function PagesView({
       >
         <h3 className="text-base font-semibold text-white">新增栏目页</h3>
         <p className="text-sm leading-6 text-slate-500">
-          适合以后新增 TikTok AI、工程 AI、SaaS 产品等二级栏目。保存后会生成可访问的栏目页；如果希望首页能看到它，请再到“首页管理”新增入口卡片。
+          运营时只需要先填栏目名称。Slug、页面路径、内容来源位置可以留空，系统会自动生成；也可以勾选“同时显示到首页入口”。
         </p>
-        <div className="grid gap-4 lg:grid-cols-4">
+        <div className="grid gap-4 lg:grid-cols-2">
           <FieldHelp label="页面名称" required description="后台列表中显示的栏目名称。" placeholder="例如：TikTok AI 运营" frontPosition="后台栏目页列表、导航说明">
             <input name="title" required placeholder="TikTok AI 运营" className={fieldClass()} />
           </FieldHelp>
-          <FieldHelp label="Slug" required description="栏目配置唯一标识，建议英文短横线。" placeholder="tiktok-ai" frontPosition="后台配置和 sitemap">
-            <input name="slug" required placeholder="tiktok-ai" className={fieldClass()} />
+          <FieldHelp label="页面描述" description="解释该栏目收录什么内容，给管理员和前台用户一个明确预期。" placeholder="围绕短视频选题、脚本、素材、发布和复盘的 AI 工作流。" frontPosition="栏目页 Hero / 描述">
+            <textarea name="hero_description" rows={3} className={textareaClass()} />
           </FieldHelp>
-          <FieldHelp label="页面路径" required description="用户访问的前端路径。" placeholder="/tiktok-ai" frontPosition="前端第二层页面 URL">
-            <input name="page_path" required placeholder="/tiktok-ai" className={fieldClass()} />
-          </FieldHelp>
-          <FieldHelp label="内容来源位置" required description="决定该栏目页读取哪个发布位置下的内容。这里不会出现“首页核心入口”，因为首页核心入口是导航卡片，不是内容列表来源。" placeholder="请选择内容来源位置" frontPosition="栏目页内容列表">
-            <select name="placement_slug" required className={fieldClass()} defaultValue="">
-              <option value="" disabled>选择内容来源位置</option>
+        </div>
+
+        <details className="rounded-lg border border-white/10 bg-black/20 p-4">
+          <summary className="cursor-pointer text-sm font-semibold text-cyan-50">
+            高级设置：路径、内容来源、SEO
+          </summary>
+          <div className="mt-4 grid gap-4 lg:grid-cols-3">
+            <FieldHelp label="Slug" description="可以留空，系统会自动生成。建议英文短横线。" placeholder="tiktok-ai" frontPosition="后台配置和 sitemap">
+              <input name="slug" placeholder="可留空自动生成" className={fieldClass()} />
+            </FieldHelp>
+            <FieldHelp label="页面路径" description="可以留空，系统会根据 slug 自动生成。" placeholder="/tiktok-ai" frontPosition="前端第二层页面 URL">
+              <input name="page_path" placeholder="可留空自动生成" className={fieldClass()} />
+            </FieldHelp>
+            <FieldHelp label="内容来源位置" description="可以留空，系统会自动创建同名内容来源位置。也可以选择已有位置复用。" placeholder="选择已有位置或留空自动创建" frontPosition="栏目页内容列表">
+              <select name="placement_slug" className={fieldClass()} defaultValue="">
+                <option value="">自动创建同名内容来源</option>
               {activePlacements.map((placement) => (
                 <option key={placement.id} value={placement.slug}>
                   {placement.name} · {placement.page_path}
                 </option>
               ))}
+              </select>
+            </FieldHelp>
+          </div>
+          <div className="mt-4 grid gap-4 lg:grid-cols-2">
+            <input name="hero_title" placeholder="Hero 标题，可留空默认等于页面名称" className={fieldClass()} />
+            <input name="hero_subtitle" placeholder="Hero 标签，例如 TIKTOK AI OPS" className={fieldClass()} />
+            <input name="seo_title" placeholder="SEO 标题，可选" className={fieldClass()} />
+            <input name="seo_description" placeholder="SEO 描述，建议 80-160 字，可选" className={fieldClass()} />
+            <input name="empty_state_title" placeholder="空状态标题，可选" className={fieldClass()} />
+            <input name="empty_state_description" placeholder="空状态说明，可选" className={fieldClass()} />
+            <input name="primary_cta_text" placeholder="CTA 文案，可选" className={fieldClass()} />
+            <input name="primary_cta_href" placeholder="CTA 链接，可选" className={fieldClass()} />
+            <input name="description" placeholder="后台简介，可选" className={fieldClass()} />
+            <input name="sort_order" type="number" defaultValue="100" className={fieldClass()} />
+          </div>
+        </details>
+
+        <div className="grid gap-3 rounded-lg border border-cyan-300/15 bg-cyan-300/[0.055] p-4">
+          <label className="flex items-center gap-2 text-sm font-semibold text-cyan-50">
+            <input name="create_home_entry" type="checkbox" defaultChecked className="size-4 accent-cyan-300" />
+            同时显示到首页入口
+          </label>
+          <p className="text-xs leading-5 text-slate-500">
+            勾选后会自动在第一层首页创建入口卡片，点击直接进入这个新栏目。
+          </p>
+          <div className="grid gap-3 lg:grid-cols-3">
+            <select name="home_section_type" defaultValue="homepage_entry" className={fieldClass()}>
+              <option value="homepage_entry">首页核心入口区</option>
+              <option value="product_entry">首页产品入口区</option>
+              <option value="footer_navigation">Footer 导航区</option>
             </select>
-          </FieldHelp>
+            <input name="home_entry_badge" placeholder="入口 Badge，可选" className={fieldClass()} />
+            <input name="home_entry_icon" placeholder="入口图标，可选，例如 Wrench" className={fieldClass()} />
+          </div>
+          <textarea name="home_entry_description" rows={2} placeholder="首页入口说明，可留空自动使用栏目描述" className={textareaClass()} />
         </div>
-        <FieldHelp label="页面 Hero 标题" required description="显示在栏目页顶部最大标题位置。" placeholder="例如：TikTok AI 运营资料库" frontPosition="栏目页 Hero / 大标题">
-          <input name="hero_title" required placeholder="TikTok AI 运营资料库" className={fieldClass()} />
-        </FieldHelp>
-        <FieldHelp label="页面描述" description="解释该栏目收录什么内容，给管理员和前台用户一个明确预期。" placeholder="围绕短视频选题、脚本、素材、发布和复盘的 AI 工作流。" frontPosition="栏目页 Hero / 描述">
-          <textarea name="hero_description" rows={2} className={textareaClass()} />
-        </FieldHelp>
-        <input name="hero_subtitle" placeholder="TIKTOK AI OPS" className={fieldClass()} />
-        <div className="grid gap-4 lg:grid-cols-2">
-          <input name="seo_title" placeholder="SEO 标题，例如：TikTok AI 运营" className={fieldClass()} />
-          <input name="seo_description" placeholder="SEO 描述，建议 80-160 字" className={fieldClass()} />
-          <input name="empty_state_title" placeholder="空状态标题，例如：内容正在整理中" className={fieldClass()} />
-          <input name="empty_state_description" placeholder="空状态说明：管理员到哪里发布内容" className={fieldClass()} />
-          <input name="primary_cta_text" placeholder="CTA 文案，例如：进入资源库" className={fieldClass()} />
-          <input name="primary_cta_href" placeholder="CTA 链接，例如：/resources" className={fieldClass()} />
-          <input name="description" placeholder="后台简介，可选" className={fieldClass()} />
-          <input name="sort_order" type="number" defaultValue="100" className={fieldClass()} />
-        </div>
+
         <label className="flex items-center gap-2 text-sm text-slate-300">
           <input name="is_active" type="checkbox" defaultChecked className="size-4 accent-cyan-300" />
-          启用栏目页配置
+          启用栏目页
         </label>
         <button className="w-fit rounded-md bg-cyan-300 px-4 py-2.5 text-sm font-semibold text-slate-950">
           新增栏目页
@@ -1478,15 +1563,28 @@ function HomepageView({
           <FieldHelp label="主按钮文字" required description="Hero 第一按钮文案。" placeholder="进入 AI 资源库" frontPosition="首页 Hero 主 CTA">
             <input name="primary_cta_text" defaultValue={settings.primary_cta_text} className={fieldClass()} />
           </FieldHelp>
-          <FieldHelp label="主按钮链接" required description="Hero 第一按钮跳转地址。" placeholder="/resources" frontPosition="首页 Hero 主 CTA 链接">
-            <input name="primary_cta_href" defaultValue={settings.primary_cta_href} className={fieldClass()} />
-          </FieldHelp>
+          <LinkPicker
+            name="primary_cta_href"
+            label="主按钮链接"
+            required
+            description="Hero 第一按钮跳转地址。优先从已有栏目中选，不用手打路径。"
+            placeholder="/resources"
+            frontPosition="首页 Hero 主 CTA 链接"
+            contentPages={contentPages}
+            defaultValue={settings.primary_cta_href}
+          />
           <FieldHelp label="次按钮文字" description="Hero 第二按钮文案。" placeholder="查看新手路线" frontPosition="首页 Hero 次 CTA">
             <input name="secondary_cta_text" defaultValue={settings.secondary_cta_text} className={fieldClass()} />
           </FieldHelp>
-          <FieldHelp label="次按钮链接" description="Hero 第二按钮跳转地址。" placeholder="/roadmap" frontPosition="首页 Hero 次 CTA 链接">
-            <input name="secondary_cta_href" defaultValue={settings.secondary_cta_href} className={fieldClass()} />
-          </FieldHelp>
+          <LinkPicker
+            name="secondary_cta_href"
+            label="次按钮链接"
+            description="Hero 第二按钮跳转地址。可以从已有栏目中选择。"
+            placeholder="/roadmap"
+            frontPosition="首页 Hero 次 CTA 链接"
+            contentPages={contentPages}
+            defaultValue={settings.secondary_cta_href}
+          />
         </div>
         <FieldHelp label="首页 SEO 标题" description="用于首页搜索引擎标题和分享标题。" placeholder="AI资源工作台 | 海外AI工具筛选与AI工作流教程" frontPosition="首页 metadata title">
           <input name="seo_title" defaultValue={settings.seo_title} className={fieldClass()} />
@@ -1553,9 +1651,16 @@ function HomeSectionsEditor({
           <FieldHelp label="入口标题" required description="显示在首页入口卡片顶部，告诉用户要进入哪个栏目。" placeholder="例如：AI 工具库" frontPosition="首页 Hero 下方入口卡片 / 标题">
             <input name="title" required defaultValue={editingSection?.title ?? ""} placeholder="AI 工具库" className={fieldClass()} />
           </FieldHelp>
-          <FieldHelp label="跳转链接" required description="点击入口后进入的第二层页面路径。" placeholder="/tools" frontPosition="首页入口卡片 / 点击目标">
-            <input name="href" required defaultValue={editingSection?.href ?? ""} placeholder="/tools" className={fieldClass()} />
-          </FieldHelp>
+          <LinkPicker
+            name="href"
+            label="跳转链接"
+            required
+            description="点击入口后进入的第二层页面路径。优先从已创建栏目中选择。"
+            placeholder="/tools"
+            frontPosition="首页入口卡片 / 点击目标"
+            contentPages={contentPages}
+            defaultValue={editingSection?.href ?? ""}
+          />
           <FieldHelp label="Badge" description="显示在入口卡片上的短标签。" placeholder="Tool Library" frontPosition="首页入口卡片 / 小标签">
             <input name="badge" defaultValue={editingSection?.badge ?? ""} placeholder="Tool Library" className={fieldClass()} />
           </FieldHelp>
@@ -1806,7 +1911,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
 
       <div className="mx-auto grid max-w-7xl gap-6 lg:grid-cols-[280px_1fr]">
         <aside className="lg:sticky lg:top-6 lg:h-[calc(100vh-3rem)]">
-          <CardShell className="p-4">
+          <CardShell className="max-h-[calc(100vh-3rem)] overflow-y-auto p-3">
             <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-cyan-300/70">
               CMS Admin
             </p>
@@ -1814,7 +1919,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
             <p className="mt-2 text-xs leading-5 text-slate-500">
               后台是内容源头，前台只展示已发布且已选择发布位置的内容。
             </p>
-            <div className="mt-4 rounded-lg border border-cyan-300/15 bg-cyan-300/[0.055] p-3">
+            <div className="mt-3 rounded-lg border border-cyan-300/15 bg-cyan-300/[0.055] p-3">
               <p className="text-xs font-semibold text-cyan-50">推荐操作顺序</p>
               <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-400">
                 <span>首页</span>
@@ -1824,7 +1929,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                 <span>内容</span>
               </div>
             </div>
-            <nav className="mt-5 grid gap-5">
+            <nav className="mt-4 grid gap-4">
               {sectionGroups.map((group) => (
                 <div key={group.title}>
                   <div className="mb-2">
@@ -1833,7 +1938,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                       {group.description}
                     </p>
                   </div>
-                  <div className="grid gap-2">
+                  <div className="grid gap-1.5">
                     {group.ids.map((id) => {
                       const section = sectionById(id);
 
@@ -1845,13 +1950,13 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                         <Link
                           key={section.id}
                           href={`/admin?section=${section.id}`}
-                          className={activeSection === section.id ? "rounded-lg border border-cyan-300/30 bg-cyan-300/10 p-3 text-cyan-50" : "rounded-lg border border-white/8 bg-white/[0.03] p-3 text-slate-400 transition hover:border-cyan-300/25 hover:text-cyan-100"}
+                          className={activeSection === section.id ? "rounded-lg border border-cyan-300/30 bg-cyan-300/10 px-3 py-2.5 text-cyan-50" : "rounded-lg border border-white/8 bg-white/[0.03] px-3 py-2.5 text-slate-400 transition hover:border-cyan-300/25 hover:text-cyan-100"}
                         >
                           <span className="flex items-center gap-2 text-sm font-medium">
                             {section.icon}
                             {section.label}
                           </span>
-                          <span className="mt-1 block text-xs leading-5 text-slate-500">
+                          <span className="mt-0.5 block text-[11px] leading-4 text-slate-500">
                             {section.description}
                           </span>
                         </Link>

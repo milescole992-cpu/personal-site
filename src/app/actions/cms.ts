@@ -17,6 +17,10 @@ function formNumber(formData: FormData, key: string, fallback = 100) {
   return Number.isFinite(value) ? value : fallback;
 }
 
+function formLink(formData: FormData, key = "href") {
+  return formText(formData, `${key}_select`) || formText(formData, key);
+}
+
 async function requireAdmin() {
   const session = await auth();
 
@@ -63,13 +67,13 @@ export async function updateSiteSettingsAction(formData: FormData) {
       formText(formData, "primary_cta_text") ||
       defaultSiteSettings.primary_cta_text,
     primary_cta_href:
-      formText(formData, "primary_cta_href") ||
+      formLink(formData, "primary_cta_href") ||
       defaultSiteSettings.primary_cta_href,
     secondary_cta_text:
       formText(formData, "secondary_cta_text") ||
       defaultSiteSettings.secondary_cta_text,
     secondary_cta_href:
-      formText(formData, "secondary_cta_href") ||
+      formLink(formData, "secondary_cta_href") ||
       defaultSiteSettings.secondary_cta_href,
     site_tagline:
       formText(formData, "site_tagline") || defaultSiteSettings.site_tagline,
@@ -113,7 +117,7 @@ export async function createHomeSectionAction(formData: FormData) {
 
   const title = formText(formData, "title");
   const description = formText(formData, "description");
-  const href = formText(formData, "href");
+  const href = normalizePagePath(formLink(formData));
 
   if (!title || !description || !href) {
     adminRedirect("home-section-missing", "homepage");
@@ -159,7 +163,7 @@ export async function updateHomeSectionAction(formData: FormData) {
     .update({
       title: formText(formData, "title"),
       description: formText(formData, "description"),
-      href: formText(formData, "href"),
+      href: normalizePagePath(formLink(formData)),
       icon: formText(formData, "icon") || null,
       badge: formText(formData, "badge") || null,
       sort_order: Number(formData.get("sort_order") || 100),
@@ -369,24 +373,44 @@ export async function deletePlacementAction(formData: FormData) {
 }
 
 function contentPagePayload(formData: FormData) {
+  const title = formText(formData, "title");
+  const slug = normalizeSlug(formText(formData, "slug") || title);
+  const pagePath = normalizePagePath(formText(formData, "page_path") || slug);
+  const placementSlug = normalizeSlug(formText(formData, "placement_slug") || slug);
+  const heroTitle = formText(formData, "hero_title") || title;
+  const heroDescription = formText(formData, "hero_description") || formText(formData, "description");
+
   return {
-    title: formText(formData, "title"),
-    slug: formText(formData, "slug"),
-    page_path: normalizePagePath(formText(formData, "page_path")),
+    title,
+    slug,
+    page_path: pagePath,
     description: formText(formData, "description") || null,
-    hero_title: formText(formData, "hero_title"),
+    hero_title: heroTitle,
     hero_subtitle: formText(formData, "hero_subtitle") || null,
-    hero_description: formText(formData, "hero_description") || null,
+    hero_description: heroDescription || null,
     seo_title: formText(formData, "seo_title") || null,
     seo_description: formText(formData, "seo_description") || null,
-    empty_state_title: formText(formData, "empty_state_title") || null,
-    empty_state_description: formText(formData, "empty_state_description") || null,
+    empty_state_title: formText(formData, "empty_state_title") || "内容正在整理中",
+    empty_state_description:
+      formText(formData, "empty_state_description") ||
+      "管理员发布内容到这个栏目对应的位置后，这里会自动展示。",
     primary_cta_text: formText(formData, "primary_cta_text") || null,
-    primary_cta_href: formText(formData, "primary_cta_href") || null,
-    placement_slug: formText(formData, "placement_slug"),
+    primary_cta_href: formLink(formData, "primary_cta_href") || null,
+    placement_slug: placementSlug,
     sort_order: formNumber(formData, "sort_order"),
     is_active: formData.get("is_active") === "on",
   };
+}
+
+function normalizeSlug(value: string) {
+  const normalized = value
+    .trim()
+    .toLowerCase()
+    .replace(/['"]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+  return normalized || `section-${Date.now()}`;
 }
 
 function normalizePagePath(pagePath: string) {
@@ -394,6 +418,10 @@ function normalizePagePath(pagePath: string) {
 
   if (!trimmedPath || trimmedPath === "/") {
     return "/";
+  }
+
+  if (/^(https?:|mailto:|tel:|#)/.test(trimmedPath)) {
+    return trimmedPath;
   }
 
   return `/${trimmedPath.replace(/^\/+/, "").replace(/\/+$/, "")}`;
@@ -415,6 +443,34 @@ export async function createContentPageAction(formData: FormData) {
     adminRedirect("content-page-missing", "pages");
   }
 
+  const { data: existingPlacement, error: placementLookupError } = await supabase
+    .from("content_placements")
+    .select("id")
+    .eq("slug", payload.placement_slug)
+    .maybeSingle();
+
+  if (placementLookupError) {
+    console.error("Failed to lookup placement", placementLookupError.message);
+    adminRedirect("content-page-failed", "pages");
+  }
+
+  if (!existingPlacement) {
+    const { error: placementError } = await supabase.from("content_placements").insert({
+      name: `${payload.title}栏目`,
+      slug: payload.placement_slug,
+      description: `内容会显示在 ${payload.page_path} 栏目页列表中。`,
+      page_path: payload.page_path,
+      placement_key: payload.placement_slug,
+      sort_order: payload.sort_order,
+      is_active: true,
+    });
+
+    if (placementError) {
+      console.error("Failed to create placement for content page", placementError.message);
+      adminRedirect("content-page-failed", "pages");
+    }
+  }
+
   const { error } = await supabase.from("content_pages").insert(payload);
 
   if (error) {
@@ -423,6 +479,28 @@ export async function createContentPageAction(formData: FormData) {
       adminRedirect("content-page-duplicate", "pages");
     }
     adminRedirect("content-page-failed", "pages");
+  }
+
+  if (formData.get("create_home_entry") === "on") {
+    const { error: homeSectionError } = await supabase.from("home_sections").insert({
+      title: payload.title,
+      description:
+        formText(formData, "home_entry_description") ||
+        payload.description ||
+        payload.hero_description ||
+        `进入 ${payload.title} 栏目。`,
+      href: payload.page_path,
+      icon: formText(formData, "home_entry_icon") || null,
+      badge: formText(formData, "home_entry_badge") || null,
+      sort_order: payload.sort_order,
+      section_type: formText(formData, "home_section_type") || "homepage_entry",
+      image_url: null,
+      is_active: true,
+    });
+
+    if (homeSectionError) {
+      console.error("Failed to create home entry for content page", homeSectionError.message);
+    }
   }
 
   revalidateCmsPaths();
