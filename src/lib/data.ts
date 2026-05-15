@@ -318,6 +318,46 @@ export async function getContentPageBySlug(slug: string) {
   );
 }
 
+export async function getContentPageByPath(pagePath: string, includeInactive = false) {
+  const normalizedPath = normalizeContentPagePath(pagePath);
+  const supabase = getSupabaseServiceClient();
+
+  if (!supabase) {
+    const fallback = defaultContentPages.find(
+      (page) =>
+        normalizeContentPagePath(page.page_path) === normalizedPath &&
+        (includeInactive || page.is_active),
+    );
+    return fallback ?? null;
+  }
+
+  const { data, error } = await supabase
+    .from("content_pages")
+    .select("*")
+    .eq("page_path", normalizedPath)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Failed to load content page by path", error.message);
+    return null;
+  }
+
+  if (!data || (!includeInactive && !data.is_active)) {
+    return null;
+  }
+
+  return data;
+}
+
+export function normalizeContentPagePath(pagePath: string) {
+  const trimmedPath = pagePath.trim();
+  if (!trimmedPath || trimmedPath === "/") {
+    return "/";
+  }
+
+  return `/${trimmedPath.replace(/^\/+/, "").replace(/\/+$/, "")}`;
+}
+
 export async function getContentTypes(includeInactive = false) {
   const supabase = getSupabaseServiceClient();
 

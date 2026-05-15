@@ -372,7 +372,7 @@ function contentPagePayload(formData: FormData) {
   return {
     title: formText(formData, "title"),
     slug: formText(formData, "slug"),
-    page_path: formText(formData, "page_path"),
+    page_path: normalizePagePath(formText(formData, "page_path")),
     description: formText(formData, "description") || null,
     hero_title: formText(formData, "hero_title"),
     hero_subtitle: formText(formData, "hero_subtitle") || null,
@@ -387,6 +387,16 @@ function contentPagePayload(formData: FormData) {
     sort_order: formNumber(formData, "sort_order"),
     is_active: formData.get("is_active") === "on",
   };
+}
+
+function normalizePagePath(pagePath: string) {
+  const trimmedPath = pagePath.trim();
+
+  if (!trimmedPath || trimmedPath === "/") {
+    return "/";
+  }
+
+  return `/${trimmedPath.replace(/^\/+/, "").replace(/\/+$/, "")}`;
 }
 
 export async function createContentPageAction(formData: FormData) {

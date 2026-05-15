@@ -1210,6 +1210,7 @@ function PagesView({
         </p>
         <p className="mt-1">
           如果你要改 /tools、/roadmap 这些已有栏目，不要在上方重复新增，直接编辑下方已有栏目卡片。
+          如果新增 /tiktok-ai 这类新栏目，前端会通过动态栏目路由自动展示，但还需要在“首页管理”新增一个入口卡片指向这个路径。
         </p>
       </div>
 
@@ -1219,7 +1220,7 @@ function PagesView({
       >
         <h3 className="text-base font-semibold text-white">新增栏目页</h3>
         <p className="text-sm leading-6 text-slate-500">
-          适合以后新增 TikTok AI、工程 AI、SaaS 产品等二级栏目。默认栏目页可以直接在下方编辑。
+          适合以后新增 TikTok AI、工程 AI、SaaS 产品等二级栏目。保存后会生成可访问的栏目页；如果希望首页能看到它，请再到“首页管理”新增入口卡片。
         </p>
         <div className="grid gap-4 lg:grid-cols-4">
           <FieldHelp label="页面名称" required description="后台列表中显示的栏目名称。" placeholder="例如：TikTok AI 运营" frontPosition="后台栏目页列表、导航说明">
