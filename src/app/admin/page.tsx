@@ -96,10 +96,11 @@ const statusMessages: Record<string, string> = {
   "home-section-missing-id": "首页入口缺少 ID。",
   "home-section-update-failed": "首页入口更新失败。",
   "home-section-delete-failed": "首页入口删除失败。",
-  "content-page-created": "栏目页已创建，会按关联发布位置展示内容。",
+  "content-page-created": "栏目页已创建，会按内容来源位置展示内容。",
   "content-page-updated": "栏目页配置已更新。",
   "content-page-deleted": "栏目页配置已删除。",
-  "content-page-missing": "栏目页缺少标题、slug、路径或关联发布位置。",
+  "content-page-missing": "栏目页缺少标题、slug、路径或内容来源位置。",
+  "content-page-duplicate": "栏目页创建失败：slug 或页面路径已经存在。默认栏目请在下方已有栏目卡片里编辑，不要重复新增。",
   "content-page-failed": "栏目页创建失败。",
   "content-page-update-failed": "栏目页更新失败。",
   "content-page-delete-failed": "栏目页删除失败。",
@@ -1187,8 +1188,19 @@ function PagesView({
       <SectionHeader
         eyebrow="Pages"
         title="栏目页管理"
-        description="这里管理第二层聚合页的标题、说明、SEO、空状态和关联发布位置。页面本身不存内容，内容仍由发布位置关系驱动。"
+        description="这里管理第二层聚合页的标题、说明、SEO、空状态和内容来源位置。页面本身不存内容，内容仍由发布位置关系驱动。"
       />
+
+      <div className="mb-5 rounded-lg border border-cyan-300/15 bg-cyan-300/[0.06] p-4 text-sm leading-6 text-slate-400">
+        <p className="font-medium text-cyan-50">先分清两个概念：</p>
+        <p className="mt-1">
+          首页核心入口是导航卡片，去“首页管理”新增，保存到 home_sections。
+          这里的内容来源位置是内容列表来源，来自 content_placements，例如“AI工具页”“教程页”“资源库”。
+        </p>
+        <p className="mt-1">
+          如果你要改 /tools、/roadmap 这些已有栏目，不要在上方重复新增，直接编辑下方已有栏目卡片。
+        </p>
+      </div>
 
       <form
         action={createContentPageAction}
@@ -1208,9 +1220,9 @@ function PagesView({
           <FieldHelp label="页面路径" required description="用户访问的前端路径。" placeholder="/tiktok-ai" frontPosition="前端第二层页面 URL">
             <input name="page_path" required placeholder="/tiktok-ai" className={fieldClass()} />
           </FieldHelp>
-          <FieldHelp label="关联发布位置" required description="决定该栏目页读取哪个发布位置下的内容。" placeholder="请选择发布位置" frontPosition="栏目页内容列表">
+          <FieldHelp label="内容来源位置" required description="决定该栏目页读取哪个发布位置下的内容。这里不会出现“首页核心入口”，因为首页核心入口是导航卡片，不是内容列表来源。" placeholder="请选择内容来源位置" frontPosition="栏目页内容列表">
             <select name="placement_slug" required className={fieldClass()} defaultValue="">
-              <option value="" disabled>选择发布位置</option>
+              <option value="" disabled>选择内容来源位置</option>
               {activePlacements.map((placement) => (
                 <option key={placement.id} value={placement.slug}>
                   {placement.name} · {placement.page_path}
@@ -1264,7 +1276,7 @@ function PagesView({
                     </span>
                   </div>
                   <p className="mt-2 text-xs leading-5 text-slate-500">
-                    关联发布位置：{placement ? `${placement.name}（${placement.slug}）` : `未匹配：${page.placement_slug}`} ·
+                    内容来源位置：{placement ? `${placement.name}（${placement.slug}）` : `未匹配：${page.placement_slug}`} ·
                     当前关联内容 {count} 条
                   </p>
                   <p className="mt-1 text-xs leading-5 text-slate-600">
@@ -1415,7 +1427,8 @@ function HomeSectionsEditor({
     <div className="mt-6">
       <h3 className="text-lg font-semibold text-white">首页入口卡片</h3>
       <p className="mt-1 text-sm text-slate-500">
-        入口卡片显示在首页 Hero 下方。每个入口都应跳到一个明确的二级栏目页，后台会提示是否匹配。
+        这里管理前端“核心入口”卡片，保存到 home_sections，不属于发布位置。
+        每个入口都应跳到一个明确的二级栏目页，后台会提示是否匹配。
       </p>
       <form
         action={editingSection ? updateHomeSectionAction : createHomeSectionAction}

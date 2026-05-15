@@ -409,6 +409,9 @@ export async function createContentPageAction(formData: FormData) {
 
   if (error) {
     console.error("Failed to create content page", error.message);
+    if (error.code === "23505") {
+      adminRedirect("content-page-duplicate", "pages");
+    }
     adminRedirect("content-page-failed", "pages");
   }
 
