@@ -266,6 +266,7 @@ export async function getHomeSections(includeInactive = false) {
   let query = supabase
     .from("home_sections")
     .select("*")
+    .eq("section_type", "homepage_entry")
     .order("sort_order", { ascending: true });
 
   if (!includeInactive) {
