@@ -1,4 +1,5 @@
 import {
+  ArrowRight,
   BarChart3,
   BookOpenText,
   Eye,
@@ -138,51 +139,33 @@ const sections: Array<{
 }> = [
   {
     id: "dashboard",
-    label: "总览",
-    description: "内容数量、发布状态、最近更新和快捷入口",
+    label: "运营总览",
+    description: "按三层结构看网站：首页、栏目、内容",
     icon: <BarChart3 size={17} />,
   },
   {
-    id: "content-publish",
-    label: "内容发布",
-    description: "新增资源、教程、工具或工作流",
-    icon: <FilePlus2 size={17} />,
-  },
-  {
-    id: "content-management",
-    label: "内容管理",
-    description: "搜索、筛选、编辑、上下架和删除内容",
-    icon: <FolderKanban size={17} />,
-  },
-  {
-    id: "pages",
-    label: "栏目页管理",
-    description: "管理 /resources、/tools、/workflows 等二级聚合页",
-    icon: <BookOpenText size={17} />,
-  },
-  {
-    id: "content-types",
-    label: "内容类型",
-    description: "配置内容的业务类型",
-    icon: <Layers3 size={17} />,
-  },
-  {
-    id: "placements",
-    label: "发布位置",
-    description: "配置内容显示到哪个页面或模块",
-    icon: <Flag size={17} />,
-  },
-  {
     id: "homepage",
-    label: "首页管理",
-    description: "Hero、首页入口、首页模块和首页 SEO",
+    label: "第一层：首页管理",
+    description: "首页 Hero、入口卡片、首页精选模块和 SEO",
     icon: <Home size={17} />,
   },
   {
-    id: "taxonomy",
-    label: "分类与标签",
-    description: "查看当前内容分类和标签，第二阶段升级独立表",
-    icon: <Tags size={17} />,
+    id: "pages",
+    label: "第二层：栏目管理",
+    description: "管理 /resources、/tools、/workflows 等聚合页",
+    icon: <BookOpenText size={17} />,
+  },
+  {
+    id: "content-management",
+    label: "第三层：内容管理",
+    description: "搜索、编辑、发布、下架、推荐和删除内容",
+    icon: <FolderKanban size={17} />,
+  },
+  {
+    id: "content-publish",
+    label: "发布新内容",
+    description: "新增资源、教程、工具、工作流或路线内容",
+    icon: <FilePlus2 size={17} />,
   },
   {
     id: "settings",
@@ -191,12 +174,56 @@ const sections: Array<{
     icon: <Settings2 size={17} />,
   },
   {
+    id: "placements",
+    label: "发布位置配置",
+    description: "定义内容可以显示到哪个页面或首页模块",
+    icon: <Flag size={17} />,
+  },
+  {
+    id: "content-types",
+    label: "内容类型配置",
+    description: "配置工具、教程、工作流等业务类型",
+    icon: <Layers3 size={17} />,
+  },
+  {
+    id: "taxonomy",
+    label: "分类与标签",
+    description: "查看当前内容分类和标签，第二阶段升级独立表",
+    icon: <Tags size={17} />,
+  },
+  {
     id: "user-content",
     label: "用户内容",
     description: "预留投稿、评论、反馈、举报审核入口",
     icon: <ShieldCheck size={17} />,
   },
 ];
+
+const sectionGroups: Array<{
+  title: string;
+  description: string;
+  ids: AdminSection[];
+}> = [
+  {
+    title: "运营路径",
+    description: "日常主要按这个顺序操作",
+    ids: ["dashboard", "homepage", "pages", "content-management", "content-publish"],
+  },
+  {
+    title: "基础配置",
+    description: "不常改，但决定后台可选项",
+    ids: ["settings", "placements", "content-types", "taxonomy"],
+  },
+  {
+    title: "用户与审核",
+    description: "第二阶段扩展",
+    ids: ["user-content"],
+  },
+];
+
+function sectionById(id: AdminSection) {
+  return sections.find((section) => section.id === id);
+}
 
 function fieldClass() {
   return "rounded-md border border-white/10 bg-black/24 px-3 py-2 text-sm text-slate-100 outline-none transition focus:border-cyan-300/50";
@@ -791,11 +818,15 @@ function DashboardView({
   resources,
   contentTypes,
   placements,
+  homeSections,
+  contentPages,
   downloadsCount,
 }: {
   resources: Resource[];
   contentTypes: ContentType[];
   placements: ContentPlacement[];
+  homeSections: HomeSection[];
+  contentPages: ContentPage[];
   downloadsCount: number;
 }) {
   const published = resources.filter((item) => item.is_published);
@@ -813,9 +844,32 @@ function DashboardView({
     <CardShell className="p-6">
       <SectionHeader
         eyebrow="Dashboard"
-        title="运营总览"
-        description="先判断内容库健康度：发布了多少、草稿有多少、哪些内容最近更新。"
+        title="三层内容运营总览"
+        description="后台按前台结构管理：第一层首页负责入口，第二层栏目负责聚合，第三层内容负责详情。先走这条路径，别在配置里迷路。"
       />
+      <div className="mb-5 grid gap-3 lg:grid-cols-3">
+        <FlowCard
+          index="01"
+          title="第一层：首页"
+          description="管理首页 Hero 和入口卡片。入口决定用户第一步去哪个栏目。"
+          href="/admin?section=homepage"
+          stat={`${homeSections.length} 个入口`}
+        />
+        <FlowCard
+          index="02"
+          title="第二层：栏目页"
+          description="管理 /tools、/resources 这类聚合页。栏目决定页面文案和内容来源。"
+          href="/admin?section=pages"
+          stat={`${contentPages.length} 个栏目`}
+        />
+        <FlowCard
+          index="03"
+          title="第三层：内容"
+          description="发布工具、教程、工作流。选择发布位置后才会出现在对应栏目。"
+          href="/admin?section=content-management"
+          stat={`${published.length} 条已发布`}
+        />
+      </div>
       <div className="grid gap-4 md:grid-cols-4">
         <StatCard icon={<BookOpenText size={20} />} label="全部内容" value={resources.length} />
         <StatCard icon={<Eye size={20} />} label="已发布" value={published.length} />
@@ -850,14 +904,47 @@ function DashboardView({
         <div className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
           <h3 className="text-base font-semibold text-white">快捷入口</h3>
           <div className="mt-4 grid gap-2">
-            <Link href="/admin?section=content-publish" className={pillClass()}>新增内容</Link>
-            <Link href="/admin?section=content-management" className={pillClass()}>管理内容</Link>
-            <Link href="/admin?section=placements" className={pillClass()}>配置发布位置</Link>
             <Link href="/admin?section=homepage" className={pillClass()}>编辑首页</Link>
+            <Link href="/admin?section=pages" className={pillClass()}>管理栏目</Link>
+            <Link href="/admin?section=content-management" className={pillClass()}>管理内容</Link>
+            <Link href="/admin?section=content-publish" className={pillClass()}>新增内容</Link>
           </div>
         </div>
       </div>
     </CardShell>
+  );
+}
+
+function FlowCard({
+  index,
+  title,
+  description,
+  href,
+  stat,
+}: {
+  index: string;
+  title: string;
+  description: string;
+  href: string;
+  stat: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className="group rounded-lg border border-cyan-300/15 bg-cyan-300/[0.055] p-4 transition hover:border-cyan-300/35 hover:bg-cyan-300/[0.08]"
+    >
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <span className="font-mono text-xs text-cyan-200">{index}</span>
+        <span className="rounded-md bg-black/25 px-2 py-1 text-xs text-slate-400">
+          {stat}
+        </span>
+      </div>
+      <h3 className="text-base font-semibold text-white">{title}</h3>
+      <p className="mt-2 text-sm leading-6 text-slate-500">{description}</p>
+      <span className="mt-4 inline-flex items-center gap-2 text-xs font-semibold text-cyan-100">
+        进入管理 <ArrowRight size={14} className="transition group-hover:translate-x-0.5" />
+      </span>
+    </Link>
   );
 }
 
@@ -934,9 +1021,9 @@ function ContentManagementView({
   return (
     <CardShell className="p-6">
       <SectionHeader
-        eyebrow="Content"
-        title="内容管理"
-        description="这里不是展示列表，而是运营列表：搜索、筛选、预览、编辑、上下架、推荐、热门和删除。"
+        eyebrow="Layer 03"
+        title="第三层：内容管理"
+        description="这里管理详情页内容。内容只有选择了发布位置并且处于已发布状态，才会显示到第一层首页或第二层栏目。"
       />
       <form className="mb-5 grid gap-3 rounded-lg border border-white/10 bg-white/[0.03] p-4 lg:grid-cols-[1fr_180px_180px_160px_auto]" action="/admin">
         <input type="hidden" name="section" value="content-management" />
@@ -1047,9 +1134,9 @@ function ContentTypesView({ contentTypes }: { contentTypes: ContentType[] }) {
   return (
     <CardShell className="p-6">
       <SectionHeader
-        eyebrow="Schema"
-        title="内容类型管理"
-        description="内容类型是后台配置，不是代码写死。默认类型只是种子数据，可以停用、排序、编辑。"
+        eyebrow="Config"
+        title="内容类型配置"
+        description="这里是基础配置，不是日常发布入口。内容类型决定一条内容是什么，例如工具、教程、工作流。"
       />
       <form action={createContentTypeAction} className="grid gap-4 rounded-lg border border-white/10 bg-white/[0.03] p-4">
         <div className="grid gap-4 lg:grid-cols-4">
@@ -1118,9 +1205,9 @@ function PlacementsView({ placements }: { placements: ContentPlacement[] }) {
   return (
     <CardShell className="p-6">
       <SectionHeader
-        eyebrow="Placement"
-        title="发布位置管理"
-        description="发布位置解释“内容保存后会出现在前台哪里”。默认位置只是种子数据，后续可新增、停用、排序。"
+        eyebrow="Config"
+        title="发布位置配置"
+        description="这里是基础配置，用来定义内容能出现在哪里。日常发布内容时，只需要在内容表单里勾选这些位置。"
       />
       <form action={createPlacementAction} className="grid gap-4 rounded-lg border border-white/10 bg-white/[0.03] p-4">
         <div className="grid gap-4 lg:grid-cols-5">
@@ -1197,16 +1284,16 @@ function PagesView({
   return (
     <CardShell className="p-6">
       <SectionHeader
-        eyebrow="Pages"
-        title="栏目页管理"
-        description="这里管理第二层聚合页的标题、说明、SEO、空状态和内容来源位置。页面本身不存内容，内容仍由发布位置关系驱动。"
+        eyebrow="Layer 02"
+        title="第二层：栏目管理"
+        description="这里管理用户从首页入口点进去看到的栏目页，例如 /tools、/resources、/workflows。栏目页不直接存内容，只决定页面文案和读取哪个发布位置。"
       />
 
       <div className="mb-5 rounded-lg border border-cyan-300/15 bg-cyan-300/[0.06] p-4 text-sm leading-6 text-slate-400">
-        <p className="font-medium text-cyan-50">先分清两个概念：</p>
+        <p className="font-medium text-cyan-50">二层栏目怎么和前台对应：</p>
         <p className="mt-1">
-          首页核心入口是导航卡片，去“首页管理”新增，保存到 home_sections。
-          这里的内容来源位置是内容列表来源，来自 content_placements，例如“AI工具页”“教程页”“资源库”。
+          首页入口卡片只负责“跳到哪里”；栏目页负责“这个页面长什么样、读哪些内容”。
+          这里的内容来源位置来自 content_placements，例如“AI工具页”“教程页”“资源库”。
         </p>
         <p className="mt-1">
           如果你要改 /tools、/roadmap 这些已有栏目，不要在上方重复新增，直接编辑下方已有栏目卡片。
@@ -1372,9 +1459,9 @@ function HomepageView({
   return (
     <CardShell className="p-6">
       <SectionHeader
-        eyebrow="Homepage"
-        title="首页管理"
-        description="首页 Hero、按钮、入口卡片和首页 SEO 都从数据库读取。删除默认值后，按字段说明重新填写即可。"
+        eyebrow="Layer 01"
+        title="第一层：首页管理"
+        description="这里管理用户打开网站第一眼看到的内容：Hero、按钮、首页入口卡片和首页 SEO。首页入口负责把用户带到第二层栏目页。"
       />
       <form action={updateSiteSettingsAction} className="grid gap-5 rounded-lg border border-white/10 bg-white/[0.03] p-4">
         <input type="hidden" name="id" defaultValue={settings.id} />
@@ -1727,21 +1814,51 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
             <p className="mt-2 text-xs leading-5 text-slate-500">
               后台是内容源头，前台只展示已发布且已选择发布位置的内容。
             </p>
-            <nav className="mt-5 grid gap-2">
-              {sections.map((section) => (
-                <Link
-                  key={section.id}
-                  href={`/admin?section=${section.id}`}
-                  className={activeSection === section.id ? "rounded-lg border border-cyan-300/30 bg-cyan-300/10 p-3 text-cyan-50" : "rounded-lg border border-white/8 bg-white/[0.03] p-3 text-slate-400 transition hover:border-cyan-300/25 hover:text-cyan-100"}
-                >
-                  <span className="flex items-center gap-2 text-sm font-medium">
-                    {section.icon}
-                    {section.label}
-                  </span>
-                  <span className="mt-1 block text-xs leading-5 text-slate-500">
-                    {section.description}
-                  </span>
-                </Link>
+            <div className="mt-4 rounded-lg border border-cyan-300/15 bg-cyan-300/[0.055] p-3">
+              <p className="text-xs font-semibold text-cyan-50">推荐操作顺序</p>
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-400">
+                <span>首页</span>
+                <ArrowRight size={13} className="text-cyan-200" />
+                <span>栏目</span>
+                <ArrowRight size={13} className="text-cyan-200" />
+                <span>内容</span>
+              </div>
+            </div>
+            <nav className="mt-5 grid gap-5">
+              {sectionGroups.map((group) => (
+                <div key={group.title}>
+                  <div className="mb-2">
+                    <p className="text-xs font-semibold text-slate-300">{group.title}</p>
+                    <p className="mt-1 text-[11px] leading-4 text-slate-600">
+                      {group.description}
+                    </p>
+                  </div>
+                  <div className="grid gap-2">
+                    {group.ids.map((id) => {
+                      const section = sectionById(id);
+
+                      if (!section) {
+                        return null;
+                      }
+
+                      return (
+                        <Link
+                          key={section.id}
+                          href={`/admin?section=${section.id}`}
+                          className={activeSection === section.id ? "rounded-lg border border-cyan-300/30 bg-cyan-300/10 p-3 text-cyan-50" : "rounded-lg border border-white/8 bg-white/[0.03] p-3 text-slate-400 transition hover:border-cyan-300/25 hover:text-cyan-100"}
+                        >
+                          <span className="flex items-center gap-2 text-sm font-medium">
+                            {section.icon}
+                            {section.label}
+                          </span>
+                          <span className="mt-1 block text-xs leading-5 text-slate-500">
+                            {section.description}
+                          </span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
               ))}
             </nav>
           </CardShell>
@@ -1762,6 +1879,8 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
               resources={resources}
               contentTypes={contentTypes}
               placements={contentPlacements}
+              homeSections={homeSections}
+              contentPages={contentPages}
               downloadsCount={downloads.length}
             />
           ) : null}
