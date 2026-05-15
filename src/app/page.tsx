@@ -6,12 +6,9 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import {
   HOME_PREVIEW_LIMIT,
-  getContentPages,
-  getContentPlacements,
   getHomeSections,
   getResourcesByPlacement,
   getSiteSettings,
-  resolvePlacementMoreHref,
 } from "@/lib/data";
 import { absoluteUrl, siteDescription, siteName } from "@/lib/seo";
 
@@ -42,29 +39,18 @@ export async function generateMetadata(): Promise<Metadata> {
 export const dynamic = "force-dynamic";
 
 const SIDE_PREVIEW_LIMIT = 8;
-
-function previewMoreHref(
-  placementSlug: string,
-  contentPages: Awaited<ReturnType<typeof getContentPages>>,
-  contentPlacements: Awaited<ReturnType<typeof getContentPlacements>>,
-) {
-  return resolvePlacementMoreHref(placementSlug, contentPages, contentPlacements);
-}
+const CORE_RESOURCE_HREF = "/resources";
 
 export default async function Home() {
   const [
     settings,
     homeSections,
-    contentPages,
-    contentPlacements,
     featuredResources,
     hotResources,
     latestResources,
   ] = await Promise.all([
     getSiteSettings(),
     getHomeSections(),
-    getContentPages(),
-    getContentPlacements(),
     getResourcesByPlacement("home-featured"),
     getResourcesByPlacement("home-hot"),
     getResourcesByPlacement("home-latest"),
@@ -74,17 +60,9 @@ export default async function Home() {
   const hotPreview = hotResources.slice(0, SIDE_PREVIEW_LIMIT);
   const latestPreview = latestResources.slice(0, HOME_PREVIEW_LIMIT);
 
-  const featuredMoreHref = previewMoreHref(
-    "home-featured",
-    contentPages,
-    contentPlacements,
-  );
-  const hotMoreHref = previewMoreHref("home-hot", contentPages, contentPlacements);
-  const latestMoreHref = previewMoreHref(
-    "home-latest",
-    contentPages,
-    contentPlacements,
-  );
+  const featuredMoreHref = CORE_RESOURCE_HREF;
+  const hotMoreHref = CORE_RESOURCE_HREF;
+  const latestMoreHref = CORE_RESOURCE_HREF;
 
   const showFeatured =
     settings.show_homepage_featured && featuredPreview.length > 0;

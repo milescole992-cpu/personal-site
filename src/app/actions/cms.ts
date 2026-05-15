@@ -445,6 +445,13 @@ function normalizePagePath(pagePath: string) {
   return `/${trimmedPath.replace(/^\/+/, "").replace(/\/+$/, "")}`;
 }
 
+function isLockedResourcePage(page: {
+  slug?: string | null;
+  page_path?: string | null;
+}) {
+  return page.slug === "resources" || page.page_path === "/resources";
+}
+
 export async function createContentPageAction(formData: FormData) {
   await requireAdmin();
   const supabase = getSupabaseServiceClient();
@@ -457,19 +464,21 @@ export async function createContentPageAction(formData: FormData) {
     !payload.page_path ||
     !payload.hero_title ||
     !payload.placement_slug ||
-    !payload.home_section_id
+    (!payload.home_section_id && !isLockedResourcePage(payload))
   ) {
     adminRedirect("content-page-missing", "pages");
   }
 
-  const { data: linkedSection } = await supabase
-    .from("content_pages")
-    .select("id")
-    .eq("home_section_id", payload.home_section_id)
-    .maybeSingle();
+  if (payload.home_section_id) {
+    const { data: linkedSection } = await supabase
+      .from("content_pages")
+      .select("id")
+      .eq("home_section_id", payload.home_section_id)
+      .maybeSingle();
 
-  if (linkedSection) {
-    adminRedirect("content-page-home-section-taken", "pages");
+    if (linkedSection) {
+      adminRedirect("content-page-home-section-taken", "pages");
+    }
   }
 
   const { data: existingPlacement, error: placementLookupError } = await supabase
@@ -541,7 +550,7 @@ export async function updateContentPageAction(formData: FormData) {
     .neq("id", id)
     .maybeSingle();
 
-  if (conflictingPage) {
+  if (payload.home_section_id && conflictingPage) {
     adminRedirect("content-page-home-section-taken", "pages");
   }
 
@@ -573,9 +582,13 @@ export async function deleteContentPageAction(formData: FormData) {
 
   const { data: page } = await supabase
     .from("content_pages")
-    .select("home_section_id")
+    .select("home_section_id, slug, page_path")
     .eq("id", id)
     .maybeSingle();
+
+  if (page && isLockedResourcePage(page)) {
+    adminRedirect("content-page-locked", "pages");
+  }
 
   const { error } = await supabase.from("content_pages").delete().eq("id", id);
 

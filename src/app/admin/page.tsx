@@ -106,6 +106,7 @@ const statusMessages: Record<string, string> = {
   "content-page-failed": "栏目页创建失败。",
   "content-page-update-failed": "栏目页更新失败。",
   "content-page-delete-failed": "栏目页删除失败。",
+  "content-page-locked": "综合资源是核心栏目，不能删除；你可以编辑它的标题、描述和 SEO。",
   "content-type-created": "内容类型已创建，可在内容发布时选择。",
   "content-type-updated": "内容类型已更新。",
   "content-type-deleted": "内容类型已删除。",
@@ -275,6 +276,10 @@ function placementBySlug(placements: ContentPlacement[], slug?: string | null) {
 
 function pageByHomeSection(pages: ContentPage[], sectionId: string) {
   return pages.find((page) => page.home_section_id === sectionId) ?? null;
+}
+
+function isCoreResourcePage(page: ContentPage) {
+  return page.slug === "resources" || page.page_path === "/resources";
 }
 
 function resourcesInPlacement(
@@ -1552,6 +1557,7 @@ function PagesView({
         {pages.map((page) => {
           const placement = placementBySlug(placements, page.placement_slug);
           const count = placementContentCount(placement, relations);
+          const lockedResourcePage = isCoreResourcePage(page);
 
           return (
             <div key={page.id} className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
@@ -1565,10 +1571,16 @@ function PagesView({
                     <span className="rounded-md bg-white/5 px-2 py-1 text-xs text-slate-500">
                       {page.page_path}
                     </span>
+                    {lockedResourcePage ? (
+                      <span className="rounded-md bg-cyan-300/8 px-2 py-1 text-xs text-cyan-100">
+                        锁定核心栏目
+                      </span>
+                    ) : null}
                   </div>
                   <p className="mt-2 text-xs leading-5 text-slate-500">
-                    内容来源位置：{placement ? `${placement.name}（${placement.slug}）` : `未匹配：${page.placement_slug}`} ·
-                    当前关联内容 {count} 条
+                    {lockedResourcePage
+                      ? "综合资源页读取全部已发布内容，是网站内容核心入口。"
+                      : `内容来源位置：${placement ? `${placement.name}（${placement.slug}）` : `未匹配：${page.placement_slug}`} · 当前关联内容 ${count} 条`}
                   </p>
                   <p className="mt-1 text-xs leading-5 text-slate-600">
                     前端规则：栏目页读取这个发布位置下 is_published=true 的内容；没有内容时显示你配置的空状态。
@@ -1583,22 +1595,30 @@ function PagesView({
               <form action={updateContentPageAction} className="grid gap-3">
                 <input type="hidden" name="id" value={page.id} />
                 <div className="grid gap-3 lg:grid-cols-5">
-                  <select
-                    name="home_section_id"
-                    defaultValue={page.home_section_id ?? ""}
-                    className={fieldClass()}
-                  >
-                    {[
-                      ...availableHomeSectionsForPage(homeSections, pages, page.id),
-                      ...(page.home_section_id
-                        ? homeSections.filter((s) => s.id === page.home_section_id)
-                        : []),
-                    ].map((section) => (
-                      <option key={section.id} value={section.id}>
-                        {section.title}
-                      </option>
-                    ))}
-                  </select>
+                  {lockedResourcePage ? (
+                    <input
+                      value="综合资源核心页"
+                      disabled
+                      className={`${fieldClass()} opacity-70`}
+                    />
+                  ) : (
+                    <select
+                      name="home_section_id"
+                      defaultValue={page.home_section_id ?? ""}
+                      className={fieldClass()}
+                    >
+                      {[
+                        ...availableHomeSectionsForPage(homeSections, pages, page.id),
+                        ...(page.home_section_id
+                          ? homeSections.filter((s) => s.id === page.home_section_id)
+                          : []),
+                      ].map((section) => (
+                        <option key={section.id} value={section.id}>
+                          {section.title}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                   <input name="title" defaultValue={page.title} className={fieldClass()} />
                   <input name="slug" defaultValue={page.slug} className={fieldClass()} />
                   <input name="page_path" defaultValue={page.page_path} className={fieldClass()} />
@@ -1633,15 +1653,21 @@ function PagesView({
                   <button className={pillClass(true)}>保存栏目页</button>
                 </div>
               </form>
-              <form action={deleteContentPageAction} className="mt-2">
-                <input type="hidden" name="id" value={page.id} />
-                <ConfirmSubmitButton
-                  message={`确认删除栏目页配置“${page.title}”？这不会删除内容，但该栏目配置会从后台移除。`}
-                  className="rounded-md border border-pink-300/30 bg-pink-300/8 px-3 py-2 text-xs font-semibold text-pink-100"
-                >
-                  删除栏目页配置
-                </ConfirmSubmitButton>
-              </form>
+              {lockedResourcePage ? (
+                <p className="mt-2 text-xs text-cyan-200">
+                  综合资源为锁定栏目，不提供删除。所有内容最终都可以在这里检索和进入详情。
+                </p>
+              ) : (
+                <form action={deleteContentPageAction} className="mt-2">
+                  <input type="hidden" name="id" value={page.id} />
+                  <ConfirmSubmitButton
+                    message={`确认删除栏目页配置“${page.title}”？这不会删除内容，但该栏目配置会从后台移除。`}
+                    className="rounded-md border border-pink-300/30 bg-pink-300/8 px-3 py-2 text-xs font-semibold text-pink-100"
+                  >
+                    删除栏目页配置
+                  </ConfirmSubmitButton>
+                </form>
+              )}
             </div>
           );
         })}

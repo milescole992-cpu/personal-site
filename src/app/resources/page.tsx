@@ -3,8 +3,8 @@ import { auth } from "@/auth";
 import { SectionContentPage } from "@/components/section-content-page";
 import {
   getContentPageBySlug,
+  getResourcesForUser,
   getOrCreateUser,
-  getResourcesByPlacement,
 } from "@/lib/data";
 import { absoluteUrl, siteName } from "@/lib/seo";
 
@@ -53,14 +53,13 @@ export default async function ResourcesPage({ searchParams }: ResourcesPageProps
     searchParams,
   ]);
   const user = session?.user ? await getOrCreateUser(session.user) : null;
-  const resources = await getResourcesByPlacement(page.placement_slug, user);
+  const { resources } = await getResourcesForUser(user);
 
   return (
     <SectionContentPage
       page={page}
       resources={resources}
       searchParams={(await params) ?? {}}
-      variant="resource-library"
     />
   );
 }

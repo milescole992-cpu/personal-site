@@ -1,4 +1,4 @@
-import { ArrowRight, DatabaseZap, Orbit, Sparkles } from "lucide-react";
+import { ArrowRight, DatabaseZap, Sparkles } from "lucide-react";
 import Link from "next/link";
 import type { SiteSettings } from "@/lib/supabase";
 
@@ -25,16 +25,10 @@ export function HeroSection({ settings }: { settings: SiteSettings }) {
 
           <div className="mt-7 flex flex-col gap-3 sm:flex-row">
             <Link
-              href={settings.primary_cta_href}
+              href="/resources"
               className="inline-flex items-center justify-center gap-2 rounded-md bg-cyan-300 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200"
             >
               {settings.primary_cta_text} <ArrowRight size={16} />
-            </Link>
-            <Link
-              href={settings.secondary_cta_href}
-              className="inline-flex items-center justify-center gap-2 rounded-md border border-white/12 bg-white/6 px-4 py-2.5 text-sm font-semibold text-slate-100 transition hover:border-fuchsia-300/40 hover:bg-white/10"
-            >
-              {settings.secondary_cta_text} <Orbit size={16} />
             </Link>
           </div>
         </div>
