@@ -41,7 +41,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export const dynamic = "force-dynamic";
 
-const SIDE_PREVIEW_LIMIT = 10;
+const SIDE_PREVIEW_LIMIT = 8;
 
 function previewMoreHref(
   placementSlug: string,
