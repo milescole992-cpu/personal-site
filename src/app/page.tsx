@@ -88,20 +88,25 @@ export default async function Home() {
     settings.show_homepage_featured && featuredPreview.length > 0;
   const showHot = settings.show_homepage_hot && hotPreview.length > 0;
   const showLatest = settings.show_homepage_latest && latestPreview.length > 0;
+  const showSidePreviews = showHot || showLatest;
+  const previewLayoutClass =
+    showFeatured && showSidePreviews
+      ? "grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_340px]"
+      : "mx-auto grid max-w-3xl items-start gap-4";
 
   return (
     <div className="min-h-screen bg-[#070914] text-slate-100">
       <SiteHeader />
-      <main className="relative mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+      <main className="relative mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
         <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(circle_at_20%_0%,rgba(34,211,238,0.11),transparent_30%),radial-gradient(circle_at_82%_12%,rgba(217,70,239,0.10),transparent_28%),linear-gradient(180deg,#070914,#0b1020_48%,#070914)]" />
         <div className="pointer-events-none fixed inset-0 -z-10 scanline opacity-35" />
 
-        <div className="space-y-10">
+        <div className="space-y-8">
           <HeroSection settings={settings} />
           <RecommendationGrid sections={homeSections} />
 
           {(showFeatured || showHot || showLatest) ? (
-            <div className="flex max-w-3xl flex-col gap-10">
+            <section className={previewLayoutClass}>
               {showFeatured ? (
                 <HomePreviewSection
                   eyebrow="Featured"
@@ -110,31 +115,36 @@ export default async function Home() {
                   resources={featuredPreview}
                   moreHref={featuredMoreHref}
                   variant="card"
+                  className="lg:col-span-1"
                 />
               ) : null}
 
-              {showHot ? (
-                <HomePreviewSection
-                  eyebrow="Hot"
-                  title="热门内容"
-                  resources={hotPreview}
-                  moreHref={hotMoreHref}
-                  variant="list"
-                  eyebrowClassName="text-pink-300/70"
-                />
-              ) : null}
+              {(showHot || showLatest) ? (
+                <div className="grid gap-4">
+                  {showHot ? (
+                    <HomePreviewSection
+                      eyebrow="Hot"
+                      title="热门内容"
+                      resources={hotPreview}
+                      moreHref={hotMoreHref}
+                      variant="list"
+                      eyebrowClassName="text-pink-300/70"
+                    />
+                  ) : null}
 
-              {showLatest ? (
-                <HomePreviewSection
-                  eyebrow="Latest"
-                  title="最新发布"
-                  resources={latestPreview}
-                  moreHref={latestMoreHref}
-                  variant="list"
-                  eyebrowClassName="text-emerald-300/70"
-                />
+                  {showLatest ? (
+                    <HomePreviewSection
+                      eyebrow="Latest"
+                      title="最新发布"
+                      resources={latestPreview}
+                      moreHref={latestMoreHref}
+                      variant="list"
+                      eyebrowClassName="text-emerald-300/70"
+                    />
+                  ) : null}
+                </div>
               ) : null}
-            </div>
+            </section>
           ) : null}
         </div>
       </main>

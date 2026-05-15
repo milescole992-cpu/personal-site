@@ -18,17 +18,22 @@ export function HomeResourceLinkList({
   }
 
   return (
-    <ul className="max-w-2xl divide-y divide-white/8 rounded-md border border-white/10 bg-white/[0.02]">
-      {visibleItems.map((resource) => (
+    <ul className="divide-y divide-white/8">
+      {visibleItems.map((resource, index) => (
         <li key={resource.id}>
           <Link
             href={`/resources/${getResourceSlug(resource)}`}
-            className="flex items-baseline justify-between gap-3 px-3 py-1.5 text-xs transition hover:bg-white/[0.04]"
+            className="grid grid-cols-[24px_minmax(0,1fr)_auto] items-center gap-2 rounded-md px-2 py-2 text-xs transition hover:bg-white/[0.04]"
           >
-            <span className="min-w-0 truncate font-medium text-cyan-100 hover:underline">
+            <span className="font-mono text-[10px] text-slate-600">
+              {String(index + 1).padStart(2, "0")}
+            </span>
+            <span className="min-w-0 truncate font-medium text-slate-200 hover:text-cyan-100">
               {resource.title}
             </span>
-            <span className="shrink-0 text-[10px] text-slate-500">{resource.category}</span>
+            <span className="shrink-0 rounded bg-white/5 px-1.5 py-0.5 text-[10px] text-slate-500">
+              {resource.category}
+            </span>
           </Link>
         </li>
       ))}

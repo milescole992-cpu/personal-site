@@ -273,10 +273,6 @@ function placementBySlug(placements: ContentPlacement[], slug?: string | null) {
   return placements.find((placement) => placement.slug === slug) ?? null;
 }
 
-function pageByPath(pages: ContentPage[], href: string) {
-  return pages.find((page) => page.page_path === href) ?? null;
-}
-
 function pageByHomeSection(pages: ContentPage[], sectionId: string) {
   return pages.find((page) => page.home_section_id === sectionId) ?? null;
 }

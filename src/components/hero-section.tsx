@@ -1,4 +1,4 @@
-import { ArrowRight, Orbit, Search, Sparkles } from "lucide-react";
+import { ArrowRight, DatabaseZap, Orbit, Sparkles } from "lucide-react";
 import Link from "next/link";
 import type { SiteSettings } from "@/lib/supabase";
 
@@ -41,16 +41,16 @@ export function HeroSection({ settings }: { settings: SiteSettings }) {
 
         <div className="rounded-lg border border-white/10 bg-black/24 p-4">
           <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-slate-500">
-            Quick Search
+            Resource OS
           </p>
           <div className="mt-3 flex items-center gap-3 rounded-md border border-cyan-300/20 bg-slate-950/70 px-3 py-3">
-            <Search size={17} className="text-cyan-200" />
+            <DatabaseZap size={17} className="text-cyan-200" />
             <span className="text-sm text-slate-400">
-              搜索 AI 工具 / 工作流 / 工程数字化 / TikTok AI
+              围绕 AI 工具、工作流和教程沉淀可复用资源。
             </span>
           </div>
           <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-            {["资源库", "工具筛选", "工作流"].map((item, index) => (
+            {["入口", "精选", "教程"].map((item, index) => (
               <div key={item} className="rounded-md bg-white/5 px-2 py-3">
                 <span className="block font-mono text-lg text-white">
                   0{index + 1}
