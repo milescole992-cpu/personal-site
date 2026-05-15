@@ -1,10 +1,7 @@
 import {
-  ArrowUpRight,
-  Download,
   Filter,
   FileText,
-  Heart,
-  Lock,
+  Search,
   Sparkles,
   Target,
   UsersRound,
@@ -12,10 +9,6 @@ import {
 import type { Metadata } from "next";
 import Link from "next/link";
 import { auth } from "@/auth";
-import {
-  downloadResourceAction,
-  favoriteResourceAction,
-} from "@/app/actions/resources";
 import { CardShell } from "@/components/card-shell";
 import { getOrCreateUser, getResourcesForUser } from "@/lib/data";
 import { absoluteUrl, siteName } from "@/lib/seo";
@@ -44,15 +37,52 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function ResourcesPage() {
+type ResourcesPageProps = {
+  searchParams?: Promise<{
+    q?: string;
+    category?: string;
+    tag?: string;
+    audience?: string;
+    use_case?: string;
+    type?: string;
+  }>;
+};
+
+export default async function ResourcesPage({ searchParams }: ResourcesPageProps) {
   const session = await auth();
   const user = session?.user ? await getOrCreateUser(session.user) : null;
-  const isLoggedIn = Boolean(session?.user);
-  const loginHref = "/login?callbackUrl=/resources";
+  const params = (await searchParams) ?? {};
+  const q = (params.q || "").trim().toLowerCase();
   const { configured, resources } = await getResourcesForUser(user);
   const categories = Array.from(
     new Set(resources.map((resource) => resource.category)),
   );
+  const tags = Array.from(new Set(resources.flatMap((resource) => resource.tags)));
+  const resourceTypes = Array.from(
+    new Set(resources.map((resource) => resource.resource_type || "resource")),
+  );
+  const filteredResources = resources.filter((resource) => {
+    const text = [
+      resource.title,
+      resource.description,
+      resource.category,
+      resource.audience,
+      resource.use_cases,
+      resource.tags.join(" "),
+      resource.resource_type,
+    ]
+      .join(" ")
+      .toLowerCase();
+
+    return (
+      (!q || text.includes(q)) &&
+      (!params.category || resource.category === params.category) &&
+      (!params.tag || resource.tags.includes(params.tag)) &&
+      (!params.type || resource.resource_type === params.type) &&
+      (!params.audience || resource.audience.includes(params.audience)) &&
+      (!params.use_case || resource.use_cases.includes(params.use_case))
+    );
+  });
   const featuredCount = resources.filter((resource) => resource.rating >= 5).length;
 
   return (
@@ -117,7 +147,25 @@ export default async function ResourcesPage() {
 
         {configured && resources.length > 0 ? (
           <CardShell className="p-4">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <form className="grid gap-4 lg:grid-cols-[1fr_auto]" action="/resources">
+              <label className="flex items-center gap-3 rounded-md border border-white/10 bg-black/24 px-4 py-3">
+                <Search size={17} className="text-cyan-200" />
+                <input
+                  name="q"
+                  defaultValue={params.q}
+                  placeholder="搜索工具、场景、标签、适合人群"
+                  className="w-full bg-transparent text-sm text-slate-100 outline-none placeholder:text-slate-500"
+                />
+              </label>
+              <button
+                type="submit"
+                className="rounded-md bg-cyan-300 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200"
+              >
+                搜索资源
+              </button>
+            </form>
+
+            <div className="mt-4 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex items-center gap-3">
                 <span className="grid size-10 place-items-center rounded-md border border-cyan-300/20 bg-cyan-300/8 text-cyan-100">
                   <Filter size={17} />
@@ -127,18 +175,43 @@ export default async function ResourcesPage() {
                     当前资源索引
                   </h2>
                   <p className="mt-1 text-sm text-slate-500">
-                    先按分类浏览，后续可以继续扩展搜索、筛选和详情页。
+                    支持按分类、标签和资源类型浏览；列表页只做站内详情跳转。
                   </p>
                 </div>
               </div>
               <div className="flex flex-wrap gap-2">
+                <Link
+                  href="/resources"
+                  className="rounded-md border border-cyan-300/20 bg-cyan-300/8 px-3 py-2 text-xs text-cyan-100"
+                >
+                  全部
+                </Link>
                 {categories.map((category) => (
-                  <span
+                  <Link
                     key={category}
+                    href={`/resources?category=${encodeURIComponent(category)}`}
                     className="rounded-md border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-300"
                   >
                     {category}
-                  </span>
+                  </Link>
+                ))}
+                {resourceTypes.map((type) => (
+                  <Link
+                    key={type}
+                    href={`/resources?type=${encodeURIComponent(type)}`}
+                    className="rounded-md border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-300"
+                  >
+                    {type}
+                  </Link>
+                ))}
+                {tags.slice(0, 8).map((tag) => (
+                  <Link
+                    key={tag}
+                    href={`/resources?tag=${encodeURIComponent(tag)}`}
+                    className="rounded-md border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-300"
+                  >
+                    #{tag}
+                  </Link>
                 ))}
               </div>
             </div>
@@ -146,7 +219,7 @@ export default async function ResourcesPage() {
         ) : null}
 
         <div className="grid gap-4 lg:grid-cols-2">
-          {resources.map((resource) => (
+          {filteredResources.map((resource) => (
             <CardShell key={resource.id} className="flex h-full flex-col p-5">
               <div className="mb-4 flex items-start justify-between gap-3">
                 <span className="grid size-10 place-items-center rounded-md border border-cyan-300/20 bg-cyan-300/8 text-cyan-100">
@@ -155,6 +228,16 @@ export default async function ResourcesPage() {
                 <span className="rounded-md border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-slate-400">
                   {resource.category}
                 </span>
+                {resource.is_featured || resource.rating >= 5 ? (
+                  <span className="rounded-md border border-amber-300/20 bg-amber-300/8 px-2.5 py-1 text-xs text-amber-100">
+                    推荐
+                  </span>
+                ) : null}
+                {resource.is_hot ? (
+                  <span className="rounded-md border border-pink-300/20 bg-pink-300/8 px-2.5 py-1 text-xs text-pink-100">
+                    热门
+                  </span>
+                ) : null}
               </div>
 
               <Link
@@ -213,58 +296,13 @@ export default async function ResourcesPage() {
                 </span>
               </div>
 
-              {isLoggedIn && resource.download_url ? (
-                <p className="mt-4 break-all rounded-md border border-cyan-300/15 bg-cyan-300/8 px-3 py-2 text-xs text-cyan-100">
-                  下载链接：{resource.download_url}
-                </p>
-              ) : null}
-
               <div className="mt-5 flex flex-wrap gap-2">
-                <a
-                  href={resource.source_url || "#"}
-                  target={resource.source_url ? "_blank" : undefined}
-                  rel={resource.source_url ? "noreferrer" : undefined}
-                  className="inline-flex flex-1 items-center justify-center gap-2 rounded-md border border-white/10 bg-white/6 px-3 py-2.5 text-sm font-semibold text-slate-100 transition hover:border-cyan-300/40 hover:bg-white/10"
-                >
-                  官方来源 <ArrowUpRight size={15} />
-                </a>
                 <Link
                   href={`/resources/${getResourceSlug(resource)}`}
-                  className="inline-flex flex-1 items-center justify-center gap-2 rounded-md border border-cyan-300/20 bg-cyan-300/8 px-3 py-2.5 text-sm font-semibold text-cyan-100 transition hover:border-cyan-300/40"
+                  className="inline-flex flex-1 items-center justify-center gap-2 rounded-md bg-cyan-300 px-3 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200"
                 >
                   资源详情 <FileText size={15} />
                 </Link>
-                {isLoggedIn ? (
-                  <>
-                    <form action={favoriteResourceAction.bind(null, resource.id)}>
-                      <button
-                        type="submit"
-                        className="inline-flex items-center justify-center gap-2 rounded-md border border-pink-300/20 bg-pink-300/8 px-3 py-2.5 text-sm font-semibold text-pink-100 transition hover:border-pink-300/40"
-                      >
-                        <Heart size={15} />
-                        {resource.isFavorite ? "已收藏" : "收藏"}
-                      </button>
-                    </form>
-                    <form
-                      action={downloadResourceAction.bind(null, resource.id)}
-                      className="flex-1"
-                    >
-                      <button
-                        type="submit"
-                        className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-cyan-300 px-3 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200"
-                      >
-                        下载 <Download size={15} />
-                      </button>
-                    </form>
-                  </>
-                ) : (
-                  <a
-                    href={loginHref}
-                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-md bg-cyan-300 px-3 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200"
-                  >
-                    登录下载 <Lock size={15} />
-                  </a>
-                )}
               </div>
             </CardShell>
           ))}

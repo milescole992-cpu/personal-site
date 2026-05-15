@@ -2,6 +2,11 @@ import { BarChart3, FilePlus2, LockKeyhole, UsersRound } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
+import {
+  createHomeSectionAction,
+  updateHomeSectionAction,
+  updateSiteSettingsAction,
+} from "@/app/actions/cms";
 import { createResourceAction } from "@/app/actions/resources";
 import { CardShell } from "@/components/card-shell";
 import { isAdminEmail } from "@/lib/auth-utils";
@@ -43,7 +48,8 @@ export default async function AdminPage() {
     );
   }
 
-  const { configured, users, resources, downloads } = await getAdminData();
+  const { configured, users, resources, downloads, settings, homeSections } =
+    await getAdminData();
 
   return (
     <main className="relative min-h-screen bg-[#070914] px-4 py-10 text-slate-100 sm:px-6 lg:px-8">
@@ -95,6 +101,222 @@ export default async function AdminPage() {
         <CardShell className="p-5">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
+              <h2 className="text-lg font-semibold text-white">网站设置</h2>
+              <p className="mt-1 text-sm text-slate-500">
+                首页 Hero、SEO、品牌名和 Footer 简介现在由 Supabase 驱动。
+              </p>
+            </div>
+            <span className="rounded-md border border-emerald-300/20 bg-emerald-300/8 px-3 py-2 text-xs text-emerald-100">
+              CMS 可编辑
+            </span>
+          </div>
+          <form action={updateSiteSettingsAction} className="mt-5 grid gap-4">
+            <input type="hidden" name="id" defaultValue={settings.id} />
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="grid gap-2 text-sm text-slate-300">
+                品牌名
+                <input
+                  name="brand_name"
+                  defaultValue={settings.brand_name}
+                  className="rounded-md border border-white/10 bg-black/24 px-3 py-2 text-slate-100 outline-none focus:border-cyan-300/50"
+                />
+              </label>
+              <label className="grid gap-2 text-sm text-slate-300">
+                网站定位
+                <input
+                  name="site_tagline"
+                  defaultValue={settings.site_tagline}
+                  className="rounded-md border border-white/10 bg-black/24 px-3 py-2 text-slate-100 outline-none focus:border-cyan-300/50"
+                />
+              </label>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="grid gap-2 text-sm text-slate-300">
+                首页主标题
+                <input
+                  name="hero_title"
+                  defaultValue={settings.hero_title}
+                  className="rounded-md border border-white/10 bg-black/24 px-3 py-2 text-slate-100 outline-none focus:border-cyan-300/50"
+                />
+              </label>
+              <label className="grid gap-2 text-sm text-slate-300">
+                首页副标题
+                <input
+                  name="hero_subtitle"
+                  defaultValue={settings.hero_subtitle}
+                  className="rounded-md border border-white/10 bg-black/24 px-3 py-2 text-slate-100 outline-none focus:border-cyan-300/50"
+                />
+              </label>
+            </div>
+            <label className="grid gap-2 text-sm text-slate-300">
+              首页描述
+              <textarea
+                name="hero_description"
+                rows={3}
+                defaultValue={settings.hero_description}
+                className="rounded-md border border-white/10 bg-black/24 px-3 py-2 text-slate-100 outline-none focus:border-cyan-300/50"
+              />
+            </label>
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="grid gap-2 text-sm text-slate-300">
+                主按钮文字
+                <input
+                  name="primary_cta_text"
+                  defaultValue={settings.primary_cta_text}
+                  className="rounded-md border border-white/10 bg-black/24 px-3 py-2 text-slate-100 outline-none focus:border-cyan-300/50"
+                />
+              </label>
+              <label className="grid gap-2 text-sm text-slate-300">
+                主按钮链接
+                <input
+                  name="primary_cta_href"
+                  defaultValue={settings.primary_cta_href}
+                  className="rounded-md border border-white/10 bg-black/24 px-3 py-2 text-slate-100 outline-none focus:border-cyan-300/50"
+                />
+              </label>
+              <label className="grid gap-2 text-sm text-slate-300">
+                次按钮文字
+                <input
+                  name="secondary_cta_text"
+                  defaultValue={settings.secondary_cta_text}
+                  className="rounded-md border border-white/10 bg-black/24 px-3 py-2 text-slate-100 outline-none focus:border-cyan-300/50"
+                />
+              </label>
+              <label className="grid gap-2 text-sm text-slate-300">
+                次按钮链接
+                <input
+                  name="secondary_cta_href"
+                  defaultValue={settings.secondary_cta_href}
+                  className="rounded-md border border-white/10 bg-black/24 px-3 py-2 text-slate-100 outline-none focus:border-cyan-300/50"
+                />
+              </label>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="grid gap-2 text-sm text-slate-300">
+                首页 SEO 标题
+                <input
+                  name="seo_title"
+                  defaultValue={settings.seo_title}
+                  className="rounded-md border border-white/10 bg-black/24 px-3 py-2 text-slate-100 outline-none focus:border-cyan-300/50"
+                />
+              </label>
+              <label className="grid gap-2 text-sm text-slate-300">
+                精选区标题
+                <input
+                  name="homepage_featured_title"
+                  defaultValue={settings.homepage_featured_title}
+                  className="rounded-md border border-white/10 bg-black/24 px-3 py-2 text-slate-100 outline-none focus:border-cyan-300/50"
+                />
+              </label>
+            </div>
+            <label className="grid gap-2 text-sm text-slate-300">
+              首页 SEO 描述
+              <textarea
+                name="seo_description"
+                rows={2}
+                defaultValue={settings.seo_description}
+                className="rounded-md border border-white/10 bg-black/24 px-3 py-2 text-slate-100 outline-none focus:border-cyan-300/50"
+              />
+            </label>
+            <label className="grid gap-2 text-sm text-slate-300">
+              Footer 简介
+              <textarea
+                name="footer_description"
+                rows={2}
+                defaultValue={settings.footer_description}
+                className="rounded-md border border-white/10 bg-black/24 px-3 py-2 text-slate-100 outline-none focus:border-cyan-300/50"
+              />
+            </label>
+            <label className="grid gap-2 text-sm text-slate-300">
+              首页精选区描述
+              <textarea
+                name="homepage_featured_description"
+                rows={2}
+                defaultValue={settings.homepage_featured_description}
+                className="rounded-md border border-white/10 bg-black/24 px-3 py-2 text-slate-100 outline-none focus:border-cyan-300/50"
+              />
+            </label>
+            <button
+              type="submit"
+              className="w-fit rounded-md bg-cyan-300 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200"
+            >
+              保存网站设置
+            </button>
+          </form>
+        </CardShell>
+
+        <CardShell className="p-5">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-white">首页入口管理</h2>
+              <p className="mt-1 text-sm text-slate-500">
+                首页入口来自 `home_sections`，可控制标题、跳转、排序和显示状态。
+              </p>
+            </div>
+            <span className="rounded-md border border-cyan-300/20 bg-cyan-300/8 px-3 py-2 text-xs text-cyan-100">
+              不再写死在前端
+            </span>
+          </div>
+
+          <form action={createHomeSectionAction} className="mt-5 grid gap-4 rounded-md border border-white/10 bg-white/[0.03] p-4">
+            <h3 className="text-sm font-semibold text-white">新增入口</h3>
+            <div className="grid gap-4 md:grid-cols-3">
+              <input name="title" placeholder="标题" className="rounded-md border border-white/10 bg-black/24 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-300/50" />
+              <input name="href" placeholder="/tools" className="rounded-md border border-white/10 bg-black/24 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-300/50" />
+              <input name="badge" placeholder="Badge" className="rounded-md border border-white/10 bg-black/24 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-300/50" />
+            </div>
+            <div className="grid gap-4 md:grid-cols-3">
+              <input name="icon" placeholder="Wrench / Route / Workflow" className="rounded-md border border-white/10 bg-black/24 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-300/50" />
+              <input name="sort_order" type="number" defaultValue="100" className="rounded-md border border-white/10 bg-black/24 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-300/50" />
+              <input name="section_type" defaultValue="homepage_entry" className="rounded-md border border-white/10 bg-black/24 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-300/50" />
+            </div>
+            <textarea name="description" rows={2} placeholder="入口说明" className="rounded-md border border-white/10 bg-black/24 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-300/50" />
+            <label className="flex items-center gap-2 text-sm text-slate-300">
+              <input name="is_active" type="checkbox" defaultChecked className="size-4 accent-cyan-300" />
+              显示在首页
+            </label>
+            <button type="submit" className="w-fit rounded-md bg-cyan-300 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200">
+              新增入口
+            </button>
+          </form>
+
+          <div className="mt-5 space-y-3">
+            {homeSections.map((section) => (
+              <form
+                key={section.id}
+                action={updateHomeSectionAction}
+                className="grid gap-3 rounded-md border border-white/10 bg-white/[0.03] p-4"
+              >
+                <input type="hidden" name="id" defaultValue={section.id} />
+                <div className="grid gap-3 md:grid-cols-4">
+                  <input name="title" defaultValue={section.title} className="rounded-md border border-white/10 bg-black/24 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-300/50" />
+                  <input name="href" defaultValue={section.href} className="rounded-md border border-white/10 bg-black/24 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-300/50" />
+                  <input name="badge" defaultValue={section.badge || ""} className="rounded-md border border-white/10 bg-black/24 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-300/50" />
+                  <input name="sort_order" type="number" defaultValue={section.sort_order} className="rounded-md border border-white/10 bg-black/24 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-300/50" />
+                </div>
+                <div className="grid gap-3 md:grid-cols-3">
+                  <input name="icon" defaultValue={section.icon || ""} className="rounded-md border border-white/10 bg-black/24 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-300/50" />
+                  <input name="section_type" defaultValue={section.section_type} className="rounded-md border border-white/10 bg-black/24 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-300/50" />
+                  <input name="image_url" defaultValue={section.image_url || ""} placeholder="图片 URL（第二阶段接上传）" className="rounded-md border border-white/10 bg-black/24 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-300/50" />
+                </div>
+                <textarea name="description" rows={2} defaultValue={section.description} className="rounded-md border border-white/10 bg-black/24 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-300/50" />
+                <div className="flex items-center justify-between gap-3">
+                  <label className="flex items-center gap-2 text-sm text-slate-300">
+                    <input name="is_active" type="checkbox" defaultChecked={section.is_active} className="size-4 accent-cyan-300" />
+                    首页显示
+                  </label>
+                  <button type="submit" className="rounded-md border border-cyan-300/30 bg-cyan-300/8 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:border-cyan-300/50">
+                    保存入口
+                  </button>
+                </div>
+              </form>
+            ))}
+          </div>
+        </CardShell>
+
+        <CardShell className="p-5">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
               <h2 className="text-lg font-semibold text-white">新增 AI 资源</h2>
               <p className="mt-1 text-sm text-slate-500">
                 建议按“能解决什么问题”来写简介，不只写工具名称。
@@ -134,6 +356,15 @@ export default async function AdminPage() {
                   className="rounded-md border border-white/10 bg-black/24 px-3 py-2 text-slate-100 outline-none focus:border-cyan-300/50"
                 />
               </label>
+              <label className="grid gap-2 text-sm text-slate-300">
+                资源类型
+                <input
+                  name="resource_type"
+                  defaultValue="resource"
+                  list="resource-types"
+                  className="rounded-md border border-white/10 bg-black/24 px-3 py-2 text-slate-100 outline-none focus:border-cyan-300/50"
+                />
+              </label>
             </div>
             <datalist id="resource-categories">
               <option value="通用助手" />
@@ -145,6 +376,15 @@ export default async function AdminPage() {
               <option value="音频创作" />
               <option value="开发资源" />
               <option value="工作流教程" />
+            </datalist>
+            <datalist id="resource-types">
+              <option value="resource" />
+              <option value="tool" />
+              <option value="workflow" />
+              <option value="tutorial" />
+              <option value="tiktok" />
+              <option value="engineering" />
+              <option value="saas" />
             </datalist>
             <label className="grid gap-2 text-sm text-slate-300">
               简介
@@ -217,15 +457,42 @@ export default async function AdminPage() {
                 />
               </label>
             </div>
-            <label className="flex items-center gap-2 text-sm text-slate-300">
-              <input
-                name="requires_login"
-                type="checkbox"
-                defaultChecked
-                className="size-4 accent-cyan-300"
-              />
-              需要登录后下载
-            </label>
+            <div className="flex flex-wrap gap-4 text-sm text-slate-300">
+              <label className="flex items-center gap-2">
+                <input
+                  name="requires_login"
+                  type="checkbox"
+                  defaultChecked
+                  className="size-4 accent-cyan-300"
+                />
+                需要登录后下载
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  name="is_featured"
+                  type="checkbox"
+                  className="size-4 accent-cyan-300"
+                />
+                设为推荐
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  name="is_hot"
+                  type="checkbox"
+                  className="size-4 accent-cyan-300"
+                />
+                设为热门
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  name="is_published"
+                  type="checkbox"
+                  defaultChecked
+                  className="size-4 accent-cyan-300"
+                />
+                发布
+              </label>
+            </div>
             <button
               type="submit"
               className="w-fit rounded-md bg-cyan-300 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200"
@@ -248,6 +515,19 @@ export default async function AdminPage() {
                   <span className="rounded-md bg-white/5 px-2 py-1 text-xs text-slate-500">
                     推荐 {resource.rating}/5
                   </span>
+                  <span className="rounded-md bg-white/5 px-2 py-1 text-xs text-slate-500">
+                    {resource.resource_type || "resource"}
+                  </span>
+                  {resource.is_featured ? (
+                    <span className="rounded-md bg-amber-300/8 px-2 py-1 text-xs text-amber-100">
+                      推荐
+                    </span>
+                  ) : null}
+                  {resource.is_hot ? (
+                    <span className="rounded-md bg-pink-300/8 px-2 py-1 text-xs text-pink-100">
+                      热门
+                    </span>
+                  ) : null}
                   {resource.slug ? (
                     <span className="rounded-md bg-white/5 px-2 py-1 text-xs text-slate-500">
                       /{resource.slug}

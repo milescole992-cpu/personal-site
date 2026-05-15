@@ -20,6 +20,30 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "daily",
       priority: 0.9,
     },
+    {
+      url: absoluteUrl("/tools"),
+      lastModified: now,
+      changeFrequency: "weekly",
+      priority: 0.8,
+    },
+    {
+      url: absoluteUrl("/roadmap"),
+      lastModified: now,
+      changeFrequency: "weekly",
+      priority: 0.75,
+    },
+    {
+      url: absoluteUrl("/workflows"),
+      lastModified: now,
+      changeFrequency: "weekly",
+      priority: 0.75,
+    },
+    {
+      url: absoluteUrl("/tutorials"),
+      lastModified: now,
+      changeFrequency: "weekly",
+      priority: 0.75,
+    },
     ...resources.map((resource) => ({
       url: absoluteUrl(`/resources/${getResourceSlug(resource)}`),
       lastModified: new Date(resource.updated_at || resource.published_at),

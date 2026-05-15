@@ -4,6 +4,7 @@ type CardShellProps = {
   children: React.ReactNode;
   className?: string;
   glow?: "cyan" | "violet" | "pink" | "emerald" | "none";
+  id?: string;
 };
 
 const glowMap = {
@@ -20,9 +21,11 @@ export function CardShell({
   children,
   className,
   glow = "cyan",
+  id,
 }: CardShellProps) {
   return (
     <div
+      id={id}
       className={cn(
         "group rounded-lg border border-white/10 bg-slate-950/58 p-5 shadow-2xl shadow-black/20 backdrop-blur-md transition duration-300",
         glowMap[glow],

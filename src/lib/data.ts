@@ -5,7 +5,9 @@ import {
   type DbUser,
   type Download,
   type Favorite,
+  type HomeSection,
   type Resource,
+  type SiteSettings,
 } from "@/lib/supabase";
 import { getResourceSlug } from "@/lib/slug";
 
@@ -18,6 +20,136 @@ export type ActivityItem = {
   created_at: string;
   resource: Resource | null;
 };
+
+export const defaultSiteSettings: SiteSettings = {
+  id: "default",
+  hero_title: "AI 产品实验室与资源工作台",
+  hero_subtitle: "海外 AI 资源筛选、AI 工具库、工程数字化与 TikTok 商业运营内容中心",
+  hero_description:
+    "这里会持续沉淀可落地的 AI 工具、工作流、教程和未来 SaaS 实验入口，面向内容创作者、AI 工具玩家、副业创业者和工程数字化实践者。",
+  primary_cta_text: "进入 AI 资源库",
+  primary_cta_href: "/resources",
+  secondary_cta_text: "查看新手路线",
+  secondary_cta_href: "/roadmap",
+  site_tagline: "AI + 工程数字化 + TikTok 商业运营 + SaaS 实验",
+  seo_title: "AI资源工作台 | 海外AI工具筛选与AI工作流教程",
+  seo_description:
+    "面向普通人、内容创作者、AI工具玩家和副业创业者的海外 AI 资源筛选、AI 工具库与 AI 工作流分享站。",
+  brand_name: "AI资源工作台",
+  footer_description:
+    "一个面向 AI 工具、工程数字化、TikTok 运营和未来 SaaS 产品的个人品牌内容平台。",
+  homepage_featured_title: "精选资源与工作流",
+  homepage_featured_description:
+    "优先展示经过筛选、适合上手、能服务真实工作流的资源与内容。",
+  created_at: "",
+  updated_at: "",
+};
+
+export const defaultHomeSections: HomeSection[] = [
+  {
+    id: "tools",
+    title: "AI 工具库",
+    description: "按场景筛选海外 AI 工具，关注可用性、门槛、价格与替代方案。",
+    href: "/tools",
+    icon: "Wrench",
+    badge: "Tool Library",
+    sort_order: 10,
+    is_active: true,
+    section_type: "homepage_entry",
+    image_url: null,
+    created_at: "",
+    updated_at: "",
+  },
+  {
+    id: "workflows",
+    title: "AI 工作流",
+    description: "沉淀从选题、资料、生成、自动化到发布的可复用流程。",
+    href: "/workflows",
+    icon: "Workflow",
+    badge: "Workflow",
+    sort_order: 20,
+    is_active: true,
+    section_type: "homepage_entry",
+    image_url: null,
+    created_at: "",
+    updated_at: "",
+  },
+  {
+    id: "roadmap",
+    title: "AI 新手路线",
+    description: "把 AI 学习路径拆成通用助手、搜索研究、知识库、创作工具和自动化几个阶段。",
+    href: "/roadmap",
+    icon: "Route",
+    badge: "Roadmap",
+    sort_order: 30,
+    is_active: true,
+    section_type: "homepage_entry",
+    image_url: null,
+    created_at: "",
+    updated_at: "",
+  },
+  {
+    id: "tutorials",
+    title: "AI 教程",
+    description: "后续用于发布长文教程、操作指南、工具评测和实战案例。",
+    href: "/tutorials",
+    icon: "BookOpenText",
+    badge: "Tutorial",
+    sort_order: 40,
+    is_active: true,
+    section_type: "homepage_entry",
+    image_url: null,
+    created_at: "",
+    updated_at: "",
+  },
+];
+
+export async function getSiteSettings() {
+  const supabase = getSupabaseServiceClient();
+
+  if (!supabase) {
+    return defaultSiteSettings;
+  }
+
+  const { data, error } = await supabase
+    .from("site_settings")
+    .select("*")
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Failed to load site settings", error.message);
+    return defaultSiteSettings;
+  }
+
+  return data ?? defaultSiteSettings;
+}
+
+export async function getHomeSections(includeInactive = false) {
+  const supabase = getSupabaseServiceClient();
+
+  if (!supabase) {
+    return defaultHomeSections;
+  }
+
+  let query = supabase
+    .from("home_sections")
+    .select("*")
+    .order("sort_order", { ascending: true });
+
+  if (!includeInactive) {
+    query = query.eq("is_active", true);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error("Failed to load home sections", error.message);
+    return defaultHomeSections;
+  }
+
+  return data?.length ? data : defaultHomeSections;
+}
 
 export async function syncUserFromSession(
   sessionUser: Session["user"] | undefined,
@@ -122,6 +254,37 @@ export async function getResourcesForUser(user?: DbUser | null) {
       isFavorite: favoriteIds.has(resource.id),
     })),
   };
+}
+
+export async function getResourcesByView(
+  view: "tools" | "workflows" | "tutorials",
+) {
+  const resources = await getAllResources();
+
+  if (view === "tools") {
+    return resources.filter(
+      (resource) =>
+        resource.resource_type === "tool" ||
+        resource.category.includes("工具") ||
+        resource.tags.some((tag) => tag.includes("工具") || tag.includes("AI")),
+    );
+  }
+
+  if (view === "workflows") {
+    return resources.filter(
+      (resource) =>
+        resource.resource_type === "workflow" ||
+        resource.category.includes("工作流") ||
+        resource.tags.some((tag) => tag.includes("工作流") || tag.includes("自动化")),
+    );
+  }
+
+  return resources.filter(
+    (resource) =>
+      resource.resource_type === "tutorial" ||
+      resource.category.includes("教程") ||
+      resource.tags.some((tag) => tag.includes("教程") || tag.includes("学习")),
+  );
 }
 
 export async function getResourceById(id: string) {
@@ -296,26 +459,39 @@ export async function getAdminData() {
       users: [] as DbUser[],
       resources: [] as Resource[],
       downloads: [] as Download[],
+      settings: defaultSiteSettings,
+      homeSections: [] as HomeSection[],
     };
   }
 
-  const [{ data: users }, { data: resources }, { data: downloads }] =
-    await Promise.all([
-      supabase.from("users").select("*").order("created_at", {
-        ascending: false,
-      }),
-      supabase.from("resources").select("*").order("published_at", {
-        ascending: false,
-      }),
-      supabase.from("downloads").select("*").order("created_at", {
-        ascending: false,
-      }),
-    ]);
+  const [
+    { data: users },
+    { data: resources },
+    { data: downloads },
+    { data: settings },
+    { data: homeSections },
+  ] = await Promise.all([
+    supabase.from("users").select("*").order("created_at", {
+      ascending: false,
+    }),
+    supabase.from("resources").select("*").order("published_at", {
+      ascending: false,
+    }),
+    supabase.from("downloads").select("*").order("created_at", {
+      ascending: false,
+    }),
+    supabase.from("site_settings").select("*").limit(1).maybeSingle(),
+    supabase.from("home_sections").select("*").order("sort_order", {
+      ascending: true,
+    }),
+  ]);
 
   return {
     configured: true,
     users: users ?? [],
     resources: resources ?? [],
     downloads: downloads ?? [],
+    settings: settings ?? defaultSiteSettings,
+    homeSections: homeSections ?? [],
   };
 }

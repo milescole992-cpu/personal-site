@@ -22,9 +22,50 @@ export type Resource = {
   download_url: string | null;
   audience: string;
   use_cases: string;
+  resource_type: string;
+  is_featured: boolean;
+  is_hot: boolean;
+  is_published: boolean;
+  seo_title: string | null;
+  seo_description: string | null;
   requires_login: boolean;
   published_at: string;
   rating: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type SiteSettings = {
+  id: string;
+  hero_title: string;
+  hero_subtitle: string;
+  hero_description: string;
+  primary_cta_text: string;
+  primary_cta_href: string;
+  secondary_cta_text: string;
+  secondary_cta_href: string;
+  site_tagline: string;
+  seo_title: string;
+  seo_description: string;
+  brand_name: string;
+  footer_description: string;
+  homepage_featured_title: string;
+  homepage_featured_description: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type HomeSection = {
+  id: string;
+  title: string;
+  description: string;
+  href: string;
+  icon: string | null;
+  badge: string | null;
+  sort_order: number;
+  is_active: boolean;
+  section_type: string;
+  image_url: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -62,6 +103,22 @@ type Database = {
           description: string;
         };
         Update: Partial<Resource>;
+        Relationships: [];
+      };
+      site_settings: {
+        Row: SiteSettings;
+        Insert: Partial<SiteSettings>;
+        Update: Partial<SiteSettings>;
+        Relationships: [];
+      };
+      home_sections: {
+        Row: HomeSection;
+        Insert: Omit<Partial<HomeSection>, "id" | "created_at" | "updated_at"> & {
+          title: string;
+          description: string;
+          href: string;
+        };
+        Update: Partial<HomeSection>;
         Relationships: [];
       };
       downloads: {

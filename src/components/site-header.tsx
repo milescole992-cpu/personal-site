@@ -1,40 +1,50 @@
 import { GitBranch, Menu, MoonStar, Search } from "lucide-react";
+import Link from "next/link";
 import { auth, signOut } from "@/auth";
-import { navItems } from "@/data/mock";
 import { isAdminEmail } from "@/lib/auth-utils";
+import { getSiteSettings } from "@/lib/data";
 
 export async function SiteHeader() {
   const session = await auth();
+  const settings = await getSiteSettings();
   const user = session?.user;
   const displayName = user?.name || user?.email || "用户";
   const isAdmin = isAdminEmail(user?.email);
+  const navItems = [
+    { label: "首页", href: "/" },
+    { label: "资源库", href: "/resources" },
+    { label: "工具", href: "/tools" },
+    { label: "路线", href: "/roadmap" },
+    { label: "工作流", href: "/workflows" },
+    { label: "教程", href: "/tutorials" },
+  ];
 
   return (
     <header className="sticky top-0 z-50 border-b border-white/10 bg-[#070914]/82 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        <a href="#" className="flex items-center gap-3">
+        <Link href="/" className="flex items-center gap-3">
           <span className="grid size-9 place-items-center rounded-lg border border-cyan-300/30 bg-cyan-300/10 font-mono text-sm font-bold text-cyan-200 shadow-[0_0_24px_rgba(34,211,238,0.18)]">
             AI
           </span>
           <span>
             <span className="block text-sm font-semibold text-white">
-              AI资源工作台
+              {settings.brand_name}
             </span>
             <span className="block font-mono text-[10px] uppercase tracking-[0.24em] text-slate-500">
-              Tools & Workflow
+              AI Lab & CMS
             </span>
           </span>
-        </a>
+        </Link>
 
         <nav className="hidden items-center gap-1 md:flex">
           {navItems.map((item) => (
-            <a
+            <Link
               key={item.label}
               href={item.href}
               className="rounded-md px-3 py-2 text-sm text-slate-300 transition hover:bg-white/8 hover:text-cyan-100"
             >
               {item.label}
-            </a>
+            </Link>
           ))}
         </nav>
 
@@ -63,14 +73,14 @@ export async function SiteHeader() {
           {user ? (
             <div className="flex items-center gap-2">
               {isAdmin ? (
-                <a
+                <Link
                   href="/admin"
                   className="hidden rounded-md border border-emerald-300/20 bg-emerald-300/8 px-3 py-2 text-sm text-emerald-100 transition hover:border-emerald-300/40 hover:bg-emerald-300/12 lg:inline-flex"
                 >
                   管理
-                </a>
+                </Link>
               ) : null}
-              <a
+              <Link
                 href="/dashboard"
                 className="flex items-center gap-2 rounded-md border border-white/10 bg-white/5 px-2.5 py-1.5 text-sm text-slate-200 transition hover:border-cyan-300/40 hover:text-cyan-100"
               >
@@ -91,7 +101,7 @@ export async function SiteHeader() {
                 <span className="hidden max-w-24 truncate md:inline">
                   {displayName}
                 </span>
-              </a>
+              </Link>
               <form
                 action={async () => {
                   "use server";
@@ -107,12 +117,12 @@ export async function SiteHeader() {
               </form>
             </div>
           ) : (
-            <a
+            <Link
               href="/login"
               className="inline-flex rounded-md bg-cyan-300 px-3 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200"
             >
               登录
-            </a>
+            </Link>
           )}
           <button
             type="button"

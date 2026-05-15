@@ -44,6 +44,7 @@ export async function createResourceAction(formData: FormData) {
   const downloadUrl = formText(formData, "download_url");
   const audience = formText(formData, "audience");
   const useCases = formText(formData, "use_cases");
+  const resourceType = formText(formData, "resource_type") || "resource";
   const rating = Number(formData.get("rating") || 3);
 
   if (!title || !description) {
@@ -59,6 +60,10 @@ export async function createResourceAction(formData: FormData) {
     download_url: downloadUrl || null,
     audience,
     use_cases: useCases,
+    resource_type: resourceType,
+    is_featured: formData.get("is_featured") === "on",
+    is_hot: formData.get("is_hot") === "on",
+    is_published: formData.get("is_published") !== "off",
     requires_login: formData.get("requires_login") === "on",
     rating: Number.isFinite(rating) ? Math.min(Math.max(rating, 1), 5) : 3,
     published_at: new Date().toISOString(),
