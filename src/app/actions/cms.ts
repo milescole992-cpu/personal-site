@@ -103,11 +103,142 @@ export async function updateSiteSettingsAction(formData: FormData) {
 
   if (error) {
     console.error("Failed to update site settings", error.message);
-    adminRedirect("settings-failed", "homepage");
+    adminRedirect("settings-failed", formText(formData, "redirect_section") || "homepage");
   }
 
   revalidateCmsPaths();
-  adminRedirect("settings-saved", "homepage");
+  adminRedirect("settings-saved", formText(formData, "redirect_section") || "homepage");
+}
+
+export async function updateHeroPanelAction(formData: FormData) {
+  await requireAdmin();
+  const supabase = getSupabaseServiceClient();
+
+  if (!supabase) {
+    adminRedirect("supabase-not-configured", "settings");
+  }
+
+  const payload = {
+    hero_panel_eyebrow:
+      formText(formData, "hero_panel_eyebrow") ||
+      defaultSiteSettings.hero_panel_eyebrow,
+    hero_panel_description:
+      formText(formData, "hero_panel_description") ||
+      defaultSiteSettings.hero_panel_description,
+    hero_panel_stat_1_label:
+      formText(formData, "hero_panel_stat_1_label") ||
+      defaultSiteSettings.hero_panel_stat_1_label,
+    hero_panel_stat_2_label:
+      formText(formData, "hero_panel_stat_2_label") ||
+      defaultSiteSettings.hero_panel_stat_2_label,
+    hero_panel_stat_3_label:
+      formText(formData, "hero_panel_stat_3_label") ||
+      defaultSiteSettings.hero_panel_stat_3_label,
+  };
+
+  const existingId = formText(formData, "id");
+  const { error } = existingId && existingId !== "default"
+    ? await supabase.from("site_settings").update(payload).eq("id", existingId)
+    : await supabase.from("site_settings").insert(payload);
+
+  if (error) {
+    console.error("Failed to update hero panel", error.message);
+    adminRedirect("settings-failed", "settings");
+  }
+
+  revalidateCmsPaths();
+  adminRedirect("settings-saved", "settings");
+}
+
+export async function createTaxonomyTermAction(formData: FormData) {
+  await requireAdmin();
+  const supabase = getSupabaseServiceClient();
+
+  if (!supabase) {
+    adminRedirect("supabase-not-configured", "taxonomy");
+  }
+
+  const name = formText(formData, "name");
+  const kind = formText(formData, "kind") === "category" ? "category" : "tag";
+  const slug = normalizeSlug(formText(formData, "slug") || name);
+
+  if (!name || !slug) {
+    adminRedirect("taxonomy-missing", "taxonomy");
+  }
+
+  const { error } = await supabase.from("taxonomy_terms").insert({
+    name,
+    slug,
+    kind,
+    description: formText(formData, "description") || null,
+    sort_order: formNumber(formData, "sort_order"),
+    is_active: formData.get("is_active") === "on",
+  });
+
+  if (error) {
+    console.error("Failed to create taxonomy term", error.message);
+    adminRedirect("taxonomy-failed", "taxonomy");
+  }
+
+  revalidateCmsPaths();
+  adminRedirect("taxonomy-created", "taxonomy");
+}
+
+export async function updateTaxonomyTermAction(formData: FormData) {
+  await requireAdmin();
+  const supabase = getSupabaseServiceClient();
+  const id = formText(formData, "id");
+
+  if (!supabase || !id) {
+    adminRedirect("taxonomy-failed", "taxonomy");
+  }
+
+  const name = formText(formData, "name");
+  const kind = formText(formData, "kind") === "category" ? "category" : "tag";
+
+  if (!name) {
+    adminRedirect("taxonomy-missing", "taxonomy");
+  }
+
+  const { error } = await supabase
+    .from("taxonomy_terms")
+    .update({
+      name,
+      slug: normalizeSlug(formText(formData, "slug") || name),
+      kind,
+      description: formText(formData, "description") || null,
+      sort_order: formNumber(formData, "sort_order"),
+      is_active: formData.get("is_active") === "on",
+    })
+    .eq("id", id);
+
+  if (error) {
+    console.error("Failed to update taxonomy term", error.message);
+    adminRedirect("taxonomy-failed", "taxonomy");
+  }
+
+  revalidateCmsPaths();
+  adminRedirect("taxonomy-updated", "taxonomy");
+}
+
+export async function deleteTaxonomyTermAction(formData: FormData) {
+  await requireAdmin();
+  const supabase = getSupabaseServiceClient();
+  const id = formText(formData, "id");
+
+  if (!supabase || !id) {
+    adminRedirect("taxonomy-failed", "taxonomy");
+  }
+
+  const { error } = await supabase.from("taxonomy_terms").delete().eq("id", id);
+
+  if (error) {
+    console.error("Failed to delete taxonomy term", error.message);
+    adminRedirect("taxonomy-failed", "taxonomy");
+  }
+
+  revalidateCmsPaths();
+  adminRedirect("taxonomy-deleted", "taxonomy");
 }
 
 export async function createHomeSectionAction(formData: FormData) {
@@ -540,7 +671,10 @@ export async function updateContentPageAction(formData: FormData) {
     !payload.page_path ||
     (!payload.home_section_id && !isLockedResourcePage(payload))
   ) {
-    adminRedirect("content-page-update-failed", "pages");
+    adminRedirect(
+      "content-page-update-failed",
+      formText(formData, "redirect_section") || "pages",
+    );
   }
 
   const { data: conflictingPage } = payload.home_section_id
@@ -553,7 +687,10 @@ export async function updateContentPageAction(formData: FormData) {
     : { data: null };
 
   if (payload.home_section_id && conflictingPage) {
-    adminRedirect("content-page-home-section-taken", "pages");
+    adminRedirect(
+      "content-page-home-section-taken",
+      formText(formData, "redirect_section") || "pages",
+    );
   }
 
   const { error } = await supabase
@@ -563,14 +700,17 @@ export async function updateContentPageAction(formData: FormData) {
 
   if (error) {
     console.error("Failed to update content page", error.message);
-    adminRedirect("content-page-update-failed", "pages");
+    adminRedirect(
+      "content-page-update-failed",
+      formText(formData, "redirect_section") || "pages",
+    );
   }
 
   await syncHomeSectionHref(supabase, payload.home_section_id, payload.page_path);
 
   revalidateCmsPaths();
   revalidatePath(payload.page_path);
-  adminRedirect("content-page-updated", "pages");
+  adminRedirect("content-page-updated", formText(formData, "redirect_section") || "pages");
 }
 
 export async function restoreCoreResourcePageAction() {
@@ -633,7 +773,7 @@ export async function restoreCoreResourcePageAction() {
   }
 
   revalidateCmsPaths();
-  adminRedirect("content-page-restored", "pages");
+  adminRedirect("content-page-restored", "settings");
 }
 
 export async function deleteContentPageAction(formData: FormData) {

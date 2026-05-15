@@ -13,6 +13,7 @@ import {
   type HomeSectionWithPage,
   type Resource,
   type SiteSettings,
+  type TaxonomyTerm,
 } from "@/lib/supabase";
 import { getResourceSlug } from "@/lib/slug";
 
@@ -53,6 +54,11 @@ export const defaultSiteSettings: SiteSettings = {
   show_homepage_featured: false,
   show_homepage_hot: true,
   show_homepage_latest: true,
+  hero_panel_eyebrow: "RESOURCE OS",
+  hero_panel_description: "围绕 AI 工具、工作流和教程沉淀可复用资源。",
+  hero_panel_stat_1_label: "入口",
+  hero_panel_stat_2_label: "精选",
+  hero_panel_stat_3_label: "教程",
   created_at: "",
   updated_at: "",
 };
@@ -878,6 +884,7 @@ export async function getAdminData() {
       contentTypes: [] as ContentType[],
       contentPlacements: [] as ContentPlacement[],
       placementRelations: [] as ContentPlacementRelation[],
+      taxonomyTerms: [] as TaxonomyTerm[],
     };
   }
 
@@ -891,6 +898,7 @@ export async function getAdminData() {
     { data: contentTypes },
     { data: contentPlacements },
     { data: placementRelations },
+    { data: taxonomyTerms, error: taxonomyTermsError },
   ] = await Promise.all([
     supabase.from("users").select("*").order("created_at", {
       ascending: false,
@@ -918,6 +926,9 @@ export async function getAdminData() {
       .from("content_placement_relations")
       .select("*")
       .order("sort_order", { ascending: true }),
+    supabase.from("taxonomy_terms").select("*").order("sort_order", {
+      ascending: true,
+    }),
   ]);
 
   return {
@@ -925,11 +936,12 @@ export async function getAdminData() {
     users: users ?? [],
     resources: resources ?? [],
     downloads: downloads ?? [],
-    settings: settings ?? defaultSiteSettings,
+    settings: settings ? { ...defaultSiteSettings, ...settings } : defaultSiteSettings,
     homeSections: homeSections ?? [],
     contentPages: contentPagesError ? defaultContentPages : (contentPages ?? []),
     contentTypes: contentTypes ?? [],
     contentPlacements: contentPlacements ?? [],
     placementRelations: placementRelations ?? [],
+    taxonomyTerms: taxonomyTermsError ? [] : (taxonomyTerms ?? []),
   };
 }

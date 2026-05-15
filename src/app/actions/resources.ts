@@ -21,6 +21,14 @@ function formText(formData: FormData, key: string) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function formTexts(formData: FormData, key: string) {
+  return formData
+    .getAll(key)
+    .filter((value): value is string => typeof value === "string")
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+
 function parseTags(value: string) {
   return value
     .split(/[,，、\s]+/)
@@ -173,7 +181,9 @@ function resourcePayload(formData: FormData) {
     content_type_id: formText(formData, "content_type_id") || null,
     category,
     category_id: formText(formData, "category_id") || null,
-    tags: parseTags(formText(formData, "tags")),
+    tags: formTexts(formData, "tags").length
+      ? formTexts(formData, "tags")
+      : parseTags(formText(formData, "tags")),
     source_url: officialUrl || null,
     official_url: officialUrl || null,
     download_url: formText(formData, "download_url") || null,

@@ -23,16 +23,20 @@ import {
   createContentPageAction,
   createHomeSectionAction,
   createPlacementAction,
+  createTaxonomyTermAction,
   deleteContentPageAction,
   deleteContentTypeAction,
   deleteHomeSectionAction,
   deletePlacementAction,
+  deleteTaxonomyTermAction,
   restoreCoreResourcePageAction,
   updateContentPageAction,
   updateContentTypeAction,
   updateHomeSectionAction,
+  updateHeroPanelAction,
   updatePlacementAction,
   updateSiteSettingsAction,
+  updateTaxonomyTermAction,
 } from "@/app/actions/cms";
 import {
   createResourceAction,
@@ -54,6 +58,7 @@ import type {
   HomeSection,
   Resource,
   SiteSettings,
+  TaxonomyTerm,
 } from "@/lib/supabase";
 import { getResourceSlug } from "@/lib/slug";
 
@@ -133,6 +138,11 @@ const statusMessages: Record<string, string> = {
   "resource-delete-failed": "内容删除失败。",
   "missing-resource-fields": "标题和简介是必填项。",
   "supabase-not-configured": "Supabase 尚未配置。",
+  "taxonomy-created": "标签/分类已新增，发布内容时可以选择。",
+  "taxonomy-updated": "标签/分类已保存。",
+  "taxonomy-deleted": "标签/分类已删除。",
+  "taxonomy-missing": "请填写名称。",
+  "taxonomy-failed": "标签/分类保存失败，请确认已执行最新 Supabase SQL。",
 };
 
 const sections: Array<{
@@ -191,8 +201,8 @@ const sections: Array<{
   },
   {
     id: "taxonomy",
-    label: "分类与标签",
-    description: "查看当前内容分类和标签，第二阶段升级独立表",
+    label: "标签分类",
+    description: "先维护标签和分类，发布内容时从这里选择",
     icon: <Tags size={17} />,
   },
   {
@@ -211,7 +221,7 @@ const sectionGroups: Array<{
   {
     title: "运营路径",
     description: "日常主要按这个顺序操作",
-    ids: ["dashboard", "homepage", "pages", "content-management", "content-publish"],
+    ids: ["dashboard", "homepage", "pages", "content-management", "content-publish", "taxonomy"],
   },
   {
     title: "基础配置",
@@ -529,7 +539,7 @@ function PublishingTargetChecklist({
 function ResourceEditor({
   action,
   resource,
-  resources,
+  taxonomyTerms,
   contentTypes,
   placements,
   homeSections,
@@ -539,7 +549,7 @@ function ResourceEditor({
 }: {
   action: (formData: FormData) => void | Promise<void>;
   resource?: Resource;
-  resources: Resource[];
+  taxonomyTerms: TaxonomyTerm[];
   contentTypes: ContentType[];
   placements: ContentPlacement[];
   homeSections: HomeSection[];
@@ -548,16 +558,11 @@ function ResourceEditor({
   submitLabel: string;
 }) {
   const fallbackContentTypeId = resource?.content_type_id ?? contentTypes[0]?.id ?? "";
-  const suggestedTags = Array.from(
-    new Set(resources.flatMap((item) => item.tags).filter(Boolean)),
-  )
-    .sort()
-    .slice(0, 16);
-  const suggestedCategories = Array.from(
-    new Set(resources.map((item) => item.category).filter(Boolean)),
-  )
-    .sort()
-    .slice(0, 10);
+  const tagTerms = taxonomyTerms.filter((term) => term.kind === "tag" && term.is_active);
+  const categoryTerms = taxonomyTerms.filter(
+    (term) => term.kind === "category" && term.is_active,
+  );
+  const selectedTags = new Set(resource?.tags ?? []);
 
   return (
     <form action={action} encType="multipart/form-data" className="grid gap-6">
@@ -622,55 +627,59 @@ function ResourceEditor({
         <div className="grid gap-5 xl:grid-cols-[1.4fr_1fr]">
           <FieldHelp
             label="标签"
-            description="直接输入并保存即可。多个标签用中文逗号、英文逗号或空格分开。"
-            placeholder="例如：AI搜索, 写作, 通用助手"
+            description="只能选择左侧“标签分类”里启用的标签。需要新标签时，先去标签分类新增。"
+            placeholder="先在标签分类里新增标签"
             example="AI搜索,资料检索,研究助手"
             frontPosition="资源卡片、详情页标签、资源库搜索筛选"
           >
-            <input
-              name="tags"
-              defaultValue={resource?.tags.join(",") ?? ""}
-              placeholder="输入标签，多个用逗号分隔"
-              className={fieldClass()}
-            />
-            {suggestedTags.length > 0 ? (
-              <div className="mt-3 flex flex-wrap gap-2">
-                {suggestedTags.map((tag) => (
-                  <span key={tag} className="rounded-md border border-white/10 bg-white/[0.04] px-2 py-1 text-[11px] text-slate-400">
-                    #{tag}
-                  </span>
+            {tagTerms.length > 0 ? (
+              <div className="grid gap-2 sm:grid-cols-2">
+                {tagTerms.map((tag) => (
+                  <label
+                    key={tag.id}
+                    className="flex items-center gap-2 rounded-md border border-white/10 bg-white/[0.035] px-3 py-2 text-xs text-slate-300"
+                  >
+                    <input
+                      name="tags"
+                      type="checkbox"
+                      value={tag.name}
+                      defaultChecked={selectedTags.has(tag.name)}
+                      className="size-4 accent-cyan-300"
+                    />
+                    <span>#{tag.name}</span>
+                  </label>
                 ))}
               </div>
+            ) : (
+              <EmptyState title="还没有可选标签" description="先到左侧“标签分类”新增标签，发布内容时这里才会出现可选项。" />
+            )}
+            {resource?.tags.length ? (
+              <p className="mt-2 text-xs text-slate-500">
+                当前内容原有标签：{resource.tags.join(" / ")}
+              </p>
             ) : null}
           </FieldHelp>
           <FieldHelp
             label="主分类"
-            description="分类比标签更粗，建议从已有标签里概括一个主题，方便资源库搜索。"
-            placeholder="例如：AI搜索 / 视频创作 / 工程AI"
+            description="只能选择左侧“标签分类”里启用的分类。分类比标签更粗，用于大类筛选。"
+            placeholder="选择主分类"
             example="AI搜索"
             frontPosition="资源列表筛选、详情页分类徽标"
           >
-            <input
+            <select
               name="category"
-              list="admin-category-suggestions"
               defaultValue={resource?.category ?? ""}
-              placeholder="例如：AI搜索"
               className={fieldClass()}
-            />
-            <datalist id="admin-category-suggestions">
-              {suggestedCategories.map((category) => (
-                <option key={category} value={category} />
+            >
+              <option value="">
+                {categoryTerms.length > 0 ? "选择分类" : "请先新增分类"}
+              </option>
+              {categoryTerms.map((category) => (
+                <option key={category.id} value={category.name}>
+                  {category.name}
+                </option>
               ))}
-            </datalist>
-            {suggestedCategories.length > 0 ? (
-              <div className="mt-3 flex flex-wrap gap-2">
-                {suggestedCategories.map((category) => (
-                  <span key={category} className="rounded-md border border-white/10 bg-white/[0.04] px-2 py-1 text-[11px] text-slate-400">
-                    {category}
-                  </span>
-                ))}
-              </div>
-            ) : null}
+            </select>
           </FieldHelp>
         </div>
       </div>
@@ -1501,7 +1510,7 @@ function PagesView({
 }) {
   const activePlacements = placements.filter((placement) => placement.is_active);
   const availableEntries = availableHomeSectionsForPage(homeSections, pages);
-  const hasCoreResourcePage = pages.some((page) => isCoreResourcePage(page));
+  const editablePages = pages.filter((page) => !isCoreResourcePage(page));
 
   return (
     <CardShell className="p-6">
@@ -1520,24 +1529,6 @@ function PagesView({
           已有 /tools、/roadmap 等默认栏目请在下方编辑，不要重复新增。
         </p>
       </div>
-
-      {!hasCoreResourcePage ? (
-        <div className="mb-5 rounded-lg border border-amber-300/25 bg-amber-300/[0.08] p-4">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <h3 className="text-base font-semibold text-amber-50">综合资源核心栏目未找到</h3>
-              <p className="mt-1 text-sm leading-6 text-slate-400">
-                这是网站的总资源库，对应前台 /resources。它可以编辑标题、描述和 SEO，但不允许删除。
-              </p>
-            </div>
-            <form action={restoreCoreResourcePageAction}>
-              <button className="rounded-md bg-amber-200 px-4 py-2.5 text-sm font-semibold text-slate-950">
-                恢复综合资源栏目
-              </button>
-            </form>
-          </div>
-        </div>
-      ) : null}
 
       <form
         action={createContentPageAction}
@@ -1620,7 +1611,7 @@ function PagesView({
       </form>
 
       <div className="mt-5 space-y-4">
-        {pages.map((page) => {
+        {editablePages.map((page) => {
           const placement = placementBySlug(placements, page.placement_slug);
           const count = placementContentCount(placement, relations);
           const lockedResourcePage = isCoreResourcePage(page);
@@ -1739,8 +1730,8 @@ function PagesView({
             </div>
           );
         })}
-        {pages.length === 0 ? (
-          <EmptyState title="暂无栏目页配置" description="执行 supabase/content_pages.sql 后会写入默认二级栏目页，也可以在这里新增。" />
+        {editablePages.length === 0 ? (
+          <EmptyState title="暂无普通二层栏目" description="综合资源已移动到“网站设置”里管理。这里用于管理首页入口点进去的普通栏目页。" />
         ) : null}
       </div>
     </CardShell>
@@ -1872,6 +1863,7 @@ function HomepageView({
       />
       <form action={updateSiteSettingsAction} className="grid gap-5 rounded-lg border border-white/10 bg-white/[0.03] p-4">
         <input type="hidden" name="id" defaultValue={settings.id} />
+        <input type="hidden" name="redirect_section" value="homepage" />
         <FieldHelp label="首页主标题" required description="首页第一屏最大标题，用来说明网站核心价值。" placeholder="AI 工具、工作流与工程数字化实验室" example="AI 产品实验室与资源工作台" frontPosition="首页 Hero 区域 / 大标题">
           <input name="hero_title" defaultValue={settings.hero_title} className={fieldClass()} />
         </FieldHelp>
@@ -2090,16 +2082,32 @@ function HomeSectionsEditor({
   );
 }
 
-function SettingsView({ settings }: { settings: SiteSettings }) {
+function SettingsView({
+  settings,
+  contentPages,
+}: {
+  settings: SiteSettings;
+  contentPages: ContentPage[];
+}) {
+  const coreResourcePage =
+    contentPages.find((page) => isCoreResourcePage(page)) ?? null;
+
   return (
-    <CardShell className="p-6">
+    <CardShell className="space-y-6 p-6">
       <SectionHeader
         eyebrow="Settings"
         title="网站设置"
-        description="这里放品牌名、站点定位、Footer 和全站基础描述。首页文案请到“首页管理”。"
+        description="这里分三个独立板块：网站基础信息、综合资源核心页、首页右侧 Resource OS 面板。"
       />
-      <form action={updateSiteSettingsAction} className="grid gap-5">
+      <form action={updateSiteSettingsAction} className="grid gap-5 rounded-lg border border-white/10 bg-white/[0.03] p-4">
+        <div>
+          <h3 className="text-base font-semibold text-white">网站基础信息</h3>
+          <p className="mt-1 text-sm text-slate-500">
+            管理品牌名、网站定位、页脚和首页精选模块说明。
+          </p>
+        </div>
         <input type="hidden" name="id" defaultValue={settings.id} />
+        <input type="hidden" name="redirect_section" value="settings" />
         <div className="grid gap-5 lg:grid-cols-2">
           <FieldHelp label="品牌名" required description="显示在 Header、Footer 和部分 SEO 中。" placeholder="AI资源工作台" frontPosition="导航栏品牌、Footer">
             <input name="brand_name" defaultValue={settings.brand_name} className={fieldClass()} />
@@ -2126,40 +2134,201 @@ function SettingsView({ settings }: { settings: SiteSettings }) {
         <input type="hidden" name="secondary_cta_href" value={settings.secondary_cta_href} />
         <input type="hidden" name="seo_title" value={settings.seo_title} />
         <input type="hidden" name="seo_description" value={settings.seo_description} />
+        {settings.show_homepage_featured ? <input type="hidden" name="show_homepage_featured" value="on" /> : null}
+        {settings.show_homepage_hot ? <input type="hidden" name="show_homepage_hot" value="on" /> : null}
+        {settings.show_homepage_latest ? <input type="hidden" name="show_homepage_latest" value="on" /> : null}
         <button className="w-fit rounded-md bg-cyan-300 px-4 py-2.5 text-sm font-semibold text-slate-950">保存网站设置</button>
+      </form>
+
+      <div className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
+        <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <h3 className="text-base font-semibold text-white">综合资源核心页</h3>
+            <p className="mt-1 text-sm leading-6 text-slate-500">
+              这是锁定栏目，对应前台 /resources。可以编辑文案和 SEO，但不能删除。
+            </p>
+          </div>
+          <Link href="/resources" className={pillClass()}>
+            预览综合资源
+          </Link>
+        </div>
+        {coreResourcePage ? (
+          <form action={updateContentPageAction} className="grid gap-4">
+            <input type="hidden" name="id" value={coreResourcePage.id} />
+            <input type="hidden" name="slug" value="resources" />
+            <input type="hidden" name="page_path" value="/resources" />
+            <input type="hidden" name="placement_slug" value="resources" />
+            <input type="hidden" name="redirect_section" value="settings" />
+            <input type="hidden" name="sort_order" value={coreResourcePage.sort_order} />
+            <input type="hidden" name="is_active" value="on" />
+            <div className="grid gap-4 lg:grid-cols-2">
+              <FieldHelp label="栏目名称" required description="后台和部分前台位置显示的栏目名称。" placeholder="综合资源" frontPosition="/resources 页面配置">
+                <input name="title" defaultValue={coreResourcePage.title} className={fieldClass()} />
+              </FieldHelp>
+              <FieldHelp label="Hero 标题" required description="显示在综合资源页顶部大标题。" placeholder="综合资源" frontPosition="/resources 顶部标题">
+                <input name="hero_title" defaultValue={coreResourcePage.hero_title} className={fieldClass()} />
+              </FieldHelp>
+            </div>
+            <FieldHelp label="Hero 标签" description="显示在综合资源页顶部小标签。" placeholder="RESOURCE OS" frontPosition="/resources 顶部标签">
+              <input name="hero_subtitle" defaultValue={coreResourcePage.hero_subtitle ?? ""} className={fieldClass()} />
+            </FieldHelp>
+            <FieldHelp label="页面描述" description="显示在综合资源页顶部，用来说明这个总资源库的价值。" placeholder="这里汇总所有已发布内容..." frontPosition="/resources 顶部描述">
+              <textarea name="hero_description" rows={3} defaultValue={coreResourcePage.hero_description ?? ""} className={textareaClass()} />
+            </FieldHelp>
+            <div className="grid gap-4 lg:grid-cols-2">
+              <FieldHelp label="SEO 标题" description="综合资源页的搜索标题。" placeholder="AI 综合资源库" frontPosition="/resources metadata title">
+                <input name="seo_title" defaultValue={coreResourcePage.seo_title ?? ""} className={fieldClass()} />
+              </FieldHelp>
+              <FieldHelp label="SEO 描述" description="综合资源页的搜索摘要。" placeholder="建议 80-160 字。" frontPosition="/resources meta description">
+                <input name="seo_description" defaultValue={coreResourcePage.seo_description ?? ""} className={fieldClass()} />
+              </FieldHelp>
+              <FieldHelp label="空状态标题" description="综合资源没有内容时显示。" placeholder="综合资源正在整理中" frontPosition="/resources 空状态">
+                <input name="empty_state_title" defaultValue={coreResourcePage.empty_state_title ?? ""} className={fieldClass()} />
+              </FieldHelp>
+              <FieldHelp label="空状态描述" description="综合资源没有内容时的说明。" placeholder="内容整理中..." frontPosition="/resources 空状态">
+                <input name="empty_state_description" defaultValue={coreResourcePage.empty_state_description ?? ""} className={fieldClass()} />
+              </FieldHelp>
+            </div>
+            <input name="description" type="hidden" value={coreResourcePage.description ?? ""} />
+            <input name="primary_cta_text" type="hidden" value={coreResourcePage.primary_cta_text ?? ""} />
+            <input name="primary_cta_href" type="hidden" value={coreResourcePage.primary_cta_href ?? ""} />
+            <button className="w-fit rounded-md bg-cyan-300 px-4 py-2.5 text-sm font-semibold text-slate-950">
+              保存综合资源
+            </button>
+          </form>
+        ) : (
+          <div className="rounded-lg border border-amber-300/25 bg-amber-300/[0.08] p-4">
+            <p className="text-sm leading-6 text-slate-400">
+              综合资源核心栏目未找到，可能之前被删除了。点击恢复后就能编辑。
+            </p>
+            <form action={restoreCoreResourcePageAction} className="mt-3">
+              <button className="rounded-md bg-amber-200 px-4 py-2.5 text-sm font-semibold text-slate-950">
+                恢复综合资源栏目
+              </button>
+            </form>
+          </div>
+        )}
+      </div>
+
+      <form action={updateHeroPanelAction} className="grid gap-5 rounded-lg border border-white/10 bg-white/[0.03] p-4">
+        <div>
+          <h3 className="text-base font-semibold text-white">首页右侧 Resource OS 面板</h3>
+          <p className="mt-1 text-sm leading-6 text-slate-500">
+            对应首页 Hero 右侧的小卡片，可以编辑标题说明和三个小指标名称。
+          </p>
+        </div>
+        <input type="hidden" name="id" defaultValue={settings.id} />
+        <FieldHelp label="面板小标题" description="显示在右侧卡片顶部。" placeholder="RESOURCE OS" frontPosition="首页 Hero 右侧卡片">
+          <input name="hero_panel_eyebrow" defaultValue={settings.hero_panel_eyebrow} className={fieldClass()} />
+        </FieldHelp>
+        <FieldHelp label="面板说明" description="显示在右侧卡片中间，用一句话说明这个站的资源系统。" placeholder="围绕 AI 工具、工作流和教程沉淀可复用资源。" frontPosition="首页 Hero 右侧卡片说明">
+          <textarea name="hero_panel_description" rows={2} defaultValue={settings.hero_panel_description} className={textareaClass()} />
+        </FieldHelp>
+        <div className="grid gap-4 lg:grid-cols-3">
+          <FieldHelp label="01 文案" description="第一个小指标名称。" placeholder="入口" frontPosition="首页 Hero 右侧 01">
+            <input name="hero_panel_stat_1_label" defaultValue={settings.hero_panel_stat_1_label} className={fieldClass()} />
+          </FieldHelp>
+          <FieldHelp label="02 文案" description="第二个小指标名称。" placeholder="精选" frontPosition="首页 Hero 右侧 02">
+            <input name="hero_panel_stat_2_label" defaultValue={settings.hero_panel_stat_2_label} className={fieldClass()} />
+          </FieldHelp>
+          <FieldHelp label="03 文案" description="第三个小指标名称。" placeholder="教程" frontPosition="首页 Hero 右侧 03">
+            <input name="hero_panel_stat_3_label" defaultValue={settings.hero_panel_stat_3_label} className={fieldClass()} />
+          </FieldHelp>
+        </div>
+        <button className="w-fit rounded-md bg-cyan-300 px-4 py-2.5 text-sm font-semibold text-slate-950">
+          保存 Resource OS 面板
+        </button>
       </form>
     </CardShell>
   );
 }
 
-function TaxonomyView({ resources }: { resources: Resource[] }) {
-  const categories = Array.from(new Set(resources.map((item) => item.category).filter(Boolean))).sort();
-  const tags = Array.from(new Set(resources.flatMap((item) => item.tags))).sort();
+function TaxonomyView({ terms }: { terms: TaxonomyTerm[] }) {
+  const tags = terms.filter((term) => term.kind === "tag");
+  const categories = terms.filter((term) => term.kind === "category");
 
   return (
-    <CardShell className="p-6">
+    <CardShell className="space-y-6 p-6">
       <SectionHeader
         eyebrow="Taxonomy"
-        title="分类与标签"
-        description="第一阶段先从内容表中汇总分类和标签，避免硬做假功能。第二阶段可升级 categories、tags、resource_tags 独立表。"
+        title="标签分类"
+        description="这里是发布内容前先维护的标签库和分类库。发布内容时只能从这里选择，避免越填越乱。"
       />
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
-          <h3 className="text-base font-semibold text-white">当前分类</h3>
-          <div className="mt-4 flex flex-wrap gap-2">
-            {categories.map((category) => <span key={category} className={pillClass()}>{category}</span>)}
-          </div>
-          {categories.length === 0 ? <EmptyState title="暂无分类" description="发布内容时填写分类后，这里会自动汇总。" /> : null}
-        </div>
-        <div className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
-          <h3 className="text-base font-semibold text-white">当前标签</h3>
-          <div className="mt-4 flex flex-wrap gap-2">
-            {tags.map((tag) => <span key={tag} className={pillClass()}>#{tag}</span>)}
-          </div>
-          {tags.length === 0 ? <EmptyState title="暂无标签" description="发布内容时填写标签后，这里会自动汇总。" /> : null}
-        </div>
-      </div>
+      <form action={createTaxonomyTermAction} className="grid gap-4 rounded-lg border border-white/10 bg-white/[0.03] p-4 lg:grid-cols-[160px_1fr_1fr_120px_auto]">
+        <select name="kind" defaultValue="tag" className={fieldClass()}>
+          <option value="tag">标签</option>
+          <option value="category">分类</option>
+        </select>
+        <input name="name" required placeholder="名称，例如：AI搜索" className={fieldClass()} />
+        <input name="description" placeholder="说明，可选" className={fieldClass()} />
+        <input name="sort_order" type="number" defaultValue="100" className={fieldClass()} />
+        <label className="flex items-center gap-2 text-sm text-slate-300">
+          <input name="is_active" type="checkbox" defaultChecked className="size-4 accent-cyan-300" />
+          启用
+        </label>
+        <button className="w-fit rounded-md bg-cyan-300 px-4 py-2.5 text-sm font-semibold text-slate-950 lg:col-start-5">
+          新增
+        </button>
+      </form>
+
+      <TaxonomyTermList title="标签库" emptyTitle="暂无标签" terms={tags} />
+      <TaxonomyTermList title="分类库" emptyTitle="暂无分类" terms={categories} />
     </CardShell>
+  );
+}
+
+function TaxonomyTermList({
+  title,
+  emptyTitle,
+  terms,
+}: {
+  title: string;
+  emptyTitle: string;
+  terms: TaxonomyTerm[];
+}) {
+  return (
+    <div className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
+      <h3 className="text-base font-semibold text-white">{title}</h3>
+      <p className="mt-1 text-sm text-slate-500">
+        启用后会出现在“发布新内容”的可选项里；停用后不会再被选择。
+      </p>
+      <div className="mt-4 space-y-3">
+        {terms.map((term) => (
+          <div key={term.id} className="rounded-lg border border-white/10 bg-black/20 p-3">
+            <form
+              action={updateTaxonomyTermAction}
+              className="grid gap-3 lg:grid-cols-[120px_1fr_1fr_90px_auto_auto]"
+            >
+              <input type="hidden" name="id" value={term.id} />
+              <select name="kind" defaultValue={term.kind} className={fieldClass()}>
+                <option value="tag">标签</option>
+                <option value="category">分类</option>
+              </select>
+              <input name="name" defaultValue={term.name} className={fieldClass()} />
+              <input name="description" defaultValue={term.description ?? ""} placeholder="说明" className={fieldClass()} />
+              <input name="sort_order" type="number" defaultValue={term.sort_order} className={fieldClass()} />
+              <label className="flex items-center gap-2 text-sm text-slate-300">
+                <input name="is_active" type="checkbox" defaultChecked={term.is_active} className="size-4 accent-cyan-300" />
+                启用
+              </label>
+              <button className={pillClass(true)}>保存</button>
+            </form>
+            <form action={deleteTaxonomyTermAction} className="mt-2">
+              <input type="hidden" name="id" value={term.id} />
+              <ConfirmSubmitButton
+                message={`确认删除“${term.name}”？删除后发布内容时不能再选择它。`}
+                className="rounded-md border border-pink-300/30 bg-pink-300/8 px-3 py-2 text-xs font-semibold text-pink-100"
+              >
+                删除
+              </ConfirmSubmitButton>
+            </form>
+          </div>
+        ))}
+        {terms.length === 0 ? (
+          <EmptyState title={emptyTitle} description="先在上方新增，发布内容时才会出现可选项。" />
+        ) : null}
+      </div>
+    </div>
   );
 }
 
@@ -2218,6 +2387,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
     contentTypes,
     contentPlacements,
     placementRelations,
+    taxonomyTerms,
   } = await getAdminData();
   const activeTypes = contentTypes.filter((type) => type.is_active);
   const activePlacements = contentPlacements.filter((placement) => placement.is_active);
@@ -2239,16 +2409,6 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
             <p className="mt-2 text-xs leading-5 text-slate-500">
               后台是内容源头，前台只展示已发布且已选择发布位置的内容。
             </p>
-            <div className="mt-3 rounded-lg border border-cyan-300/15 bg-cyan-300/[0.055] p-3">
-              <p className="text-xs font-semibold text-cyan-50">推荐操作顺序</p>
-              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-400">
-                <span>首页</span>
-                <ArrowRight size={13} className="text-cyan-200" />
-                <span>栏目</span>
-                <ArrowRight size={13} className="text-cyan-200" />
-                <span>内容</span>
-              </div>
-            </div>
             <nav className="mt-4 grid gap-4">
               {sectionGroups.map((group) => (
                 <div key={group.title}>
@@ -2317,7 +2477,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
               />
               <ResourceEditor
                 action={createResourceAction}
-                resources={resources}
+                taxonomyTerms={taxonomyTerms}
                 contentTypes={activeTypes}
                 placements={activePlacements}
                 homeSections={homeSections}
@@ -2360,7 +2520,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                 <ResourceEditor
                   action={updateResourceAction}
                   resource={editingResource}
-                  resources={resources}
+                  taxonomyTerms={taxonomyTerms}
                   contentTypes={activeTypes}
                   placements={activePlacements}
                   homeSections={homeSections}
@@ -2387,8 +2547,10 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
               editingSectionId={params?.editEntry}
             />
           ) : null}
-          {activeSection === "taxonomy" ? <TaxonomyView resources={resources} /> : null}
-          {activeSection === "settings" ? <SettingsView settings={settings} /> : null}
+          {activeSection === "taxonomy" ? <TaxonomyView terms={taxonomyTerms} /> : null}
+          {activeSection === "settings" ? (
+            <SettingsView settings={settings} contentPages={contentPages} />
+          ) : null}
           {activeSection === "user-content" ? <UserContentView /> : null}
 
           <p className="pb-6 text-xs text-slate-600">

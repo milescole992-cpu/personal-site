@@ -35,16 +35,21 @@ export function HeroSection({ settings }: { settings: SiteSettings }) {
 
         <div className="rounded-lg border border-white/10 bg-black/24 p-4">
           <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-slate-500">
-            Resource OS
+            {settings.hero_panel_eyebrow || "RESOURCE OS"}
           </p>
           <div className="mt-3 flex items-center gap-3 rounded-md border border-cyan-300/20 bg-slate-950/70 px-3 py-3">
             <DatabaseZap size={17} className="text-cyan-200" />
             <span className="text-sm text-slate-400">
-              围绕 AI 工具、工作流和教程沉淀可复用资源。
+              {settings.hero_panel_description ||
+                "围绕 AI 工具、工作流和教程沉淀可复用资源。"}
             </span>
           </div>
           <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-            {["入口", "精选", "教程"].map((item, index) => (
+            {[
+              settings.hero_panel_stat_1_label || "入口",
+              settings.hero_panel_stat_2_label || "精选",
+              settings.hero_panel_stat_3_label || "教程",
+            ].map((item, index) => (
               <div key={item} className="rounded-md bg-white/5 px-2 py-3">
                 <span className="block font-mono text-lg text-white">
                   0{index + 1}

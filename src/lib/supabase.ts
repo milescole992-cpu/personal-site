@@ -130,6 +130,11 @@ export type SiteSettings = {
   show_homepage_featured: boolean;
   show_homepage_hot: boolean;
   show_homepage_latest: boolean;
+  hero_panel_eyebrow: string;
+  hero_panel_description: string;
+  hero_panel_stat_1_label: string;
+  hero_panel_stat_2_label: string;
+  hero_panel_stat_3_label: string;
   created_at: string;
   updated_at: string;
 };
@@ -161,6 +166,18 @@ export type Favorite = {
   user_id: string;
   resource_id: string;
   created_at: string;
+};
+
+export type TaxonomyTerm = {
+  id: string;
+  name: string;
+  slug: string;
+  kind: "tag" | "category";
+  description: string | null;
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
 };
 
 type Database = {
@@ -238,6 +255,19 @@ type Database = {
         Row: SiteSettings;
         Insert: Partial<SiteSettings>;
         Update: Partial<SiteSettings>;
+        Relationships: [];
+      };
+      taxonomy_terms: {
+        Row: TaxonomyTerm;
+        Insert: Omit<
+          Partial<TaxonomyTerm>,
+          "id" | "created_at" | "updated_at"
+        > & {
+          name: string;
+          slug: string;
+          kind: "tag" | "category";
+        };
+        Update: Partial<TaxonomyTerm>;
         Relationships: [];
       };
       home_sections: {
