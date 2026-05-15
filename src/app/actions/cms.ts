@@ -91,6 +91,9 @@ export async function updateSiteSettingsAction(formData: FormData) {
     homepage_featured_description:
       formText(formData, "homepage_featured_description") ||
       defaultSiteSettings.homepage_featured_description,
+    show_homepage_featured: formData.get("show_homepage_featured") === "on",
+    show_homepage_hot: formData.get("show_homepage_hot") === "on",
+    show_homepage_latest: formData.get("show_homepage_latest") === "on",
   };
 
   const existingId = formText(formData, "id");
@@ -117,16 +120,15 @@ export async function createHomeSectionAction(formData: FormData) {
 
   const title = formText(formData, "title");
   const description = formText(formData, "description");
-  const href = normalizePagePath(formLink(formData));
 
-  if (!title || !description || !href) {
+  if (!title || !description) {
     adminRedirect("home-section-missing", "homepage");
   }
 
   const { error } = await supabase.from("home_sections").insert({
     title,
     description,
-    href,
+    href: "#",
     icon: formText(formData, "icon") || null,
     badge: formText(formData, "badge") || null,
     sort_order: Number(formData.get("sort_order") || 100),
@@ -163,7 +165,6 @@ export async function updateHomeSectionAction(formData: FormData) {
     .update({
       title: formText(formData, "title"),
       description: formText(formData, "description"),
-      href: normalizePagePath(formLink(formData)),
       icon: formText(formData, "icon") || null,
       badge: formText(formData, "badge") || null,
       sort_order: Number(formData.get("sort_order") || 100),
@@ -372,6 +373,21 @@ export async function deletePlacementAction(formData: FormData) {
   adminRedirect("placement-deleted", "placements");
 }
 
+async function syncHomeSectionHref(
+  supabase: NonNullable<ReturnType<typeof getSupabaseServiceClient>>,
+  homeSectionId: string | null,
+  pagePath: string | null,
+) {
+  if (!homeSectionId) {
+    return;
+  }
+
+  await supabase
+    .from("home_sections")
+    .update({ href: pagePath || "#" })
+    .eq("id", homeSectionId);
+}
+
 function contentPagePayload(formData: FormData) {
   const title = formText(formData, "title");
   const slug = normalizeSlug(formText(formData, "slug") || title);
@@ -379,11 +395,13 @@ function contentPagePayload(formData: FormData) {
   const placementSlug = normalizeSlug(formText(formData, "placement_slug") || slug);
   const heroTitle = formText(formData, "hero_title") || title;
   const heroDescription = formText(formData, "hero_description") || formText(formData, "description");
+  const homeSectionId = formText(formData, "home_section_id");
 
   return {
     title,
     slug,
     page_path: pagePath,
+    home_section_id: homeSectionId || null,
     description: formText(formData, "description") || null,
     hero_title: heroTitle,
     hero_subtitle: formText(formData, "hero_subtitle") || null,
@@ -438,9 +456,20 @@ export async function createContentPageAction(formData: FormData) {
     !payload.slug ||
     !payload.page_path ||
     !payload.hero_title ||
-    !payload.placement_slug
+    !payload.placement_slug ||
+    !payload.home_section_id
   ) {
     adminRedirect("content-page-missing", "pages");
+  }
+
+  const { data: linkedSection } = await supabase
+    .from("content_pages")
+    .select("id")
+    .eq("home_section_id", payload.home_section_id)
+    .maybeSingle();
+
+  if (linkedSection) {
+    adminRedirect("content-page-home-section-taken", "pages");
   }
 
   const { data: existingPlacement, error: placementLookupError } = await supabase
@@ -481,27 +510,7 @@ export async function createContentPageAction(formData: FormData) {
     adminRedirect("content-page-failed", "pages");
   }
 
-  if (formData.get("create_home_entry") === "on") {
-    const { error: homeSectionError } = await supabase.from("home_sections").insert({
-      title: payload.title,
-      description:
-        formText(formData, "home_entry_description") ||
-        payload.description ||
-        payload.hero_description ||
-        `进入 ${payload.title} 栏目。`,
-      href: payload.page_path,
-      icon: formText(formData, "home_entry_icon") || null,
-      badge: formText(formData, "home_entry_badge") || null,
-      sort_order: payload.sort_order,
-      section_type: formText(formData, "home_section_type") || "homepage_entry",
-      image_url: null,
-      is_active: true,
-    });
-
-    if (homeSectionError) {
-      console.error("Failed to create home entry for content page", homeSectionError.message);
-    }
-  }
+  await syncHomeSectionHref(supabase, payload.home_section_id, payload.page_path);
 
   revalidateCmsPaths();
   revalidatePath(payload.page_path);
@@ -514,8 +523,26 @@ export async function updateContentPageAction(formData: FormData) {
   const id = formText(formData, "id");
   const payload = contentPagePayload(formData);
 
-  if (!supabase || !id || !payload.title || !payload.slug || !payload.page_path) {
+  if (
+    !supabase ||
+    !id ||
+    !payload.title ||
+    !payload.slug ||
+    !payload.page_path ||
+    !payload.home_section_id
+  ) {
     adminRedirect("content-page-update-failed", "pages");
+  }
+
+  const { data: conflictingPage } = await supabase
+    .from("content_pages")
+    .select("id")
+    .eq("home_section_id", payload.home_section_id)
+    .neq("id", id)
+    .maybeSingle();
+
+  if (conflictingPage) {
+    adminRedirect("content-page-home-section-taken", "pages");
   }
 
   const { error } = await supabase
@@ -527,6 +554,8 @@ export async function updateContentPageAction(formData: FormData) {
     console.error("Failed to update content page", error.message);
     adminRedirect("content-page-update-failed", "pages");
   }
+
+  await syncHomeSectionHref(supabase, payload.home_section_id, payload.page_path);
 
   revalidateCmsPaths();
   revalidatePath(payload.page_path);
@@ -542,11 +571,21 @@ export async function deleteContentPageAction(formData: FormData) {
     adminRedirect("content-page-delete-failed", "pages");
   }
 
+  const { data: page } = await supabase
+    .from("content_pages")
+    .select("home_section_id")
+    .eq("id", id)
+    .maybeSingle();
+
   const { error } = await supabase.from("content_pages").delete().eq("id", id);
 
   if (error) {
     console.error("Failed to delete content page", error.message);
     adminRedirect("content-page-delete-failed", "pages");
+  }
+
+  if (page?.home_section_id) {
+    await syncHomeSectionHref(supabase, page.home_section_id, null);
   }
 
   revalidateCmsPaths();

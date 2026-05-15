@@ -10,6 +10,7 @@ import {
   type Download,
   type Favorite,
   type HomeSection,
+  type HomeSectionWithPage,
   type Resource,
   type SiteSettings,
 } from "@/lib/supabase";
@@ -49,6 +50,9 @@ export const defaultSiteSettings: SiteSettings = {
   homepage_featured_title: "精选资源与工作流",
   homepage_featured_description:
     "优先展示经过筛选、适合上手、能服务真实工作流的资源与内容。",
+  show_homepage_featured: false,
+  show_homepage_hot: true,
+  show_homepage_latest: true,
   created_at: "",
   updated_at: "",
 };
@@ -132,6 +136,7 @@ export const defaultContentPages: ContentPage[] = [
     primary_cta_text: "发布资源",
     primary_cta_href: "/admin?section=content-publish",
     placement_slug: "resources",
+    home_section_id: null,
     sort_order: 10,
     is_active: true,
     created_at: "",
@@ -156,6 +161,7 @@ export const defaultContentPages: ContentPage[] = [
     primary_cta_text: "进入资源库",
     primary_cta_href: "/resources",
     placement_slug: "tools",
+    home_section_id: null,
     sort_order: 20,
     is_active: true,
     created_at: "",
@@ -180,6 +186,7 @@ export const defaultContentPages: ContentPage[] = [
     primary_cta_text: "发布工作流",
     primary_cta_href: "/admin?section=content-publish",
     placement_slug: "workflows",
+    home_section_id: null,
     sort_order: 30,
     is_active: true,
     created_at: "",
@@ -204,6 +211,7 @@ export const defaultContentPages: ContentPage[] = [
     primary_cta_text: "发布教程",
     primary_cta_href: "/admin?section=content-publish",
     placement_slug: "tutorials",
+    home_section_id: null,
     sort_order: 40,
     is_active: true,
     created_at: "",
@@ -228,6 +236,7 @@ export const defaultContentPages: ContentPage[] = [
     primary_cta_text: "发布路线内容",
     primary_cta_href: "/admin?section=content-publish",
     placement_slug: "roadmap",
+    home_section_id: null,
     sort_order: 50,
     is_active: true,
     created_at: "",
@@ -253,14 +262,27 @@ export async function getSiteSettings() {
     return defaultSiteSettings;
   }
 
-  return data ?? defaultSiteSettings;
+  if (!data) {
+    return defaultSiteSettings;
+  }
+
+  return {
+    ...defaultSiteSettings,
+    ...data,
+    show_homepage_featured:
+      data.show_homepage_featured ?? defaultSiteSettings.show_homepage_featured,
+    show_homepage_hot:
+      data.show_homepage_hot ?? defaultSiteSettings.show_homepage_hot,
+    show_homepage_latest:
+      data.show_homepage_latest ?? defaultSiteSettings.show_homepage_latest,
+  };
 }
 
 export async function getHomeSections(includeInactive = false) {
   const supabase = getSupabaseServiceClient();
 
   if (!supabase) {
-    return [] as HomeSection[];
+    return [] as HomeSectionWithPage[];
   }
 
   let query = supabase
@@ -273,14 +295,43 @@ export async function getHomeSections(includeInactive = false) {
     query = query.eq("is_active", true);
   }
 
-  const { data, error } = await query;
+  const { data: sections, error } = await query;
 
   if (error) {
     console.error("Failed to load home sections", error.message);
-    return [] as HomeSection[];
+    return [] as HomeSectionWithPage[];
   }
 
-  return data ?? [];
+  if (!sections?.length) {
+    return [] as HomeSectionWithPage[];
+  }
+
+  const sectionIds = sections.map((section) => section.id);
+  const { data: pages, error: pagesError } = await supabase
+    .from("content_pages")
+    .select("home_section_id, page_path, title, is_active")
+    .in("home_section_id", sectionIds);
+
+  if (pagesError) {
+    console.error("Failed to load linked content pages", pagesError.message);
+  }
+
+  const pageBySection = new Map(
+    (pages ?? []).map((page) => [page.home_section_id, page]),
+  );
+
+  return sections.map((section) => {
+    const linked = pageBySection.get(section.id);
+    const linkedActive = linked?.is_active ?? false;
+
+    return {
+      ...section,
+      linked_page_path:
+        linked && (includeInactive || linkedActive) ? linked.page_path : null,
+      linked_page_title:
+        linked && (includeInactive || linkedActive) ? linked.title : null,
+    };
+  });
 }
 
 export async function getContentPages(includeInactive = false) {
@@ -347,6 +398,29 @@ export async function getContentPageByPath(pagePath: string, includeInactive = f
   }
 
   return data;
+}
+
+export const HOME_PREVIEW_LIMIT = 4;
+
+export function resolvePlacementMoreHref(
+  placementSlug: string,
+  contentPages: ContentPage[],
+  placements: ContentPlacement[] = [],
+) {
+  const linkedPage = contentPages.find(
+    (page) => page.placement_slug === placementSlug && page.is_active,
+  );
+  if (linkedPage?.page_path) {
+    return linkedPage.page_path;
+  }
+
+  const placement = placements.find((item) => item.slug === placementSlug);
+  const path = placement?.page_path?.trim();
+  if (path && path !== "/") {
+    return path;
+  }
+
+  return "/resources";
 }
 
 export function normalizeContentPagePath(pagePath: string) {

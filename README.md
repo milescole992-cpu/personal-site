@@ -37,6 +37,7 @@ SUPABASE_SERVICE_ROLE_KEY=
 - `supabase/cms_phase1.sql`：站点设置和首页入口
 - `supabase/cms_content_model.sql`：内容类型、发布位置、内容与发布位置关系
 - `supabase/content_pages.sql`：栏目页 CMS 配置
+- `supabase/cms_layer_and_media.sql`：第一层↔第二层关联、首页模块开关、资源附件/视频字段与 Storage
 
 ## CMS 模型
 
@@ -53,7 +54,9 @@ SUPABASE_SERVICE_ROLE_KEY=
 - `home-hot`
 - `home-latest`
 
-后台勾选“推荐”会自动同步到 `home-featured`，勾选“热门”会自动同步到 `home-hot`。首页入口不是发布位置，需要在“首页管理”里维护。
+**三层结构**：第一层 `home_sections`（首页入口卡片）→ 第二层 `content_pages`（栏目页，须挂载到第一层）→ 第三层 `resources`（内容，通过 `content_placement_relations` 发布）。
+
+后台勾选“推荐/热门”会同步到 `home-featured` / `home-hot`。首页精选/热门/最新在「第一层：首页管理」用开关控制是否显示，前台以**文字链接列表**展示（非卡片）。内容发布支持上传 PDF/压缩包/图片或 MP4/WebM 视频（需执行 `cms_layer_and_media.sql` 并配置 Storage 桶 `resource-media`）。
 
 ## 检查
 

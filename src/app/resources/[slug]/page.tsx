@@ -18,6 +18,7 @@ import {
   favoriteResourceAction,
 } from "@/app/actions/resources";
 import { CardShell } from "@/components/card-shell";
+import { ResourceMediaPanel } from "@/components/resource-media-panel";
 import { getOrCreateUser, getResourceBySlug } from "@/lib/data";
 import { absoluteUrl, siteName } from "@/lib/seo";
 import { getResourceSlug } from "@/lib/slug";
@@ -192,6 +193,8 @@ export default async function ResourceDetailPage({
                 </div>
               </div>
             </CardShell>
+
+            <ResourceMediaPanel resource={resource} />
 
             <div className="grid gap-4 lg:grid-cols-2">
               <CardShell className="p-5">

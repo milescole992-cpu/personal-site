@@ -5,6 +5,10 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { getOrCreateUser, getResourceById } from "@/lib/data";
 import { isAdminEmail } from "@/lib/auth-utils";
+import {
+  resolveResourceMediaFromForm,
+  type ResolvedResourceMedia,
+} from "@/lib/media-storage";
 import { createSlug, getResourceSlug } from "@/lib/slug";
 import { getSupabaseServiceClient } from "@/lib/supabase";
 
@@ -226,6 +230,21 @@ export async function createResourceAction(formData: FormData) {
     adminRedirect("create-resource-failed", "content-publish");
   }
 
+  try {
+    const mediaFields = await resolveResourceMediaFromForm(formData, data.id);
+    if (
+      mediaFields.media_type !== "none" ||
+      mediaFields.media_url ||
+      mediaFields.media_file_name
+    ) {
+      await supabase.from("resources").update(mediaFields).eq("id", data.id);
+    }
+  } catch (uploadError) {
+    console.error("Failed to upload resource media", uploadError);
+    await supabase.from("resources").delete().eq("id", data.id);
+    adminRedirect("create-resource-failed", "content-publish");
+  }
+
   await syncResourcePlacements(
     data.id,
     await resolvePlacementIds({
@@ -254,11 +273,26 @@ export async function updateResourceAction(formData: FormData) {
     adminRedirect("resource-update-failed");
   }
 
+  const existing = await getResourceById(id);
+  let mediaFields: ResolvedResourceMedia = {
+    media_type: (existing?.media_type ?? "none") as ResolvedResourceMedia["media_type"],
+    media_url: existing?.media_url ?? null,
+    media_file_name: existing?.media_file_name ?? null,
+  };
+
+  try {
+    mediaFields = await resolveResourceMediaFromForm(formData, id, existing ?? undefined);
+  } catch (uploadError) {
+    console.error("Failed to upload resource media", uploadError);
+    adminRedirect("resource-update-failed");
+  }
+
   const { error } = await supabase
     .from("resources")
     .update({
       slug: createSlug(slug || payload.title),
       ...payload,
+      ...mediaFields,
     })
     .eq("id", id);
 

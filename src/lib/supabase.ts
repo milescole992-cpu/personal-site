@@ -25,6 +25,9 @@ export type Resource = {
   official_url: string | null;
   download_url: string | null;
   cover_image_url: string | null;
+  media_type: "none" | "file" | "video" | "link";
+  media_url: string | null;
+  media_file_name: string | null;
   audience: string;
   target_audience: string | null;
   use_cases: string;
@@ -96,10 +99,16 @@ export type ContentPage = {
   primary_cta_text: string | null;
   primary_cta_href: string | null;
   placement_slug: string;
+  home_section_id: string | null;
   sort_order: number;
   is_active: boolean;
   created_at: string;
   updated_at: string;
+};
+
+export type HomeSectionWithPage = HomeSection & {
+  linked_page_path: string | null;
+  linked_page_title: string | null;
 };
 
 export type SiteSettings = {
@@ -118,6 +127,9 @@ export type SiteSettings = {
   footer_description: string;
   homepage_featured_title: string;
   homepage_featured_description: string;
+  show_homepage_featured: boolean;
+  show_homepage_hot: boolean;
+  show_homepage_latest: boolean;
   created_at: string;
   updated_at: string;
 };

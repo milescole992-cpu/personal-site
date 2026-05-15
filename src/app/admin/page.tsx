@@ -93,14 +93,15 @@ const statusMessages: Record<string, string> = {
   "home-section-updated": "首页入口已更新。",
   "home-section-deleted": "首页入口已删除，前台首页不再显示。",
   "home-section-failed": "首页入口保存失败。",
-  "home-section-missing": "首页入口缺少标题、说明或链接。",
+  "home-section-missing": "首页入口缺少标题或说明。",
+  "content-page-home-section-taken": "该首页入口已挂载栏目页，请换一个第一层入口或编辑已有栏目。",
   "home-section-missing-id": "首页入口缺少 ID。",
   "home-section-update-failed": "首页入口更新失败。",
   "home-section-delete-failed": "首页入口删除失败。",
   "content-page-created": "栏目页已创建，会按内容来源位置展示内容。",
   "content-page-updated": "栏目页配置已更新。",
   "content-page-deleted": "栏目页配置已删除。",
-  "content-page-missing": "栏目页缺少标题、slug、路径或内容来源位置。",
+  "content-page-missing": "栏目页缺少标题、第一层入口或内容来源位置。",
   "content-page-duplicate": "栏目页创建失败：slug 或页面路径已经存在。默认栏目请在下方已有栏目卡片里编辑，不要重复新增。",
   "content-page-failed": "栏目页创建失败。",
   "content-page-update-failed": "栏目页更新失败。",
@@ -274,6 +275,35 @@ function placementBySlug(placements: ContentPlacement[], slug?: string | null) {
 
 function pageByPath(pages: ContentPage[], href: string) {
   return pages.find((page) => page.page_path === href) ?? null;
+}
+
+function pageByHomeSection(pages: ContentPage[], sectionId: string) {
+  return pages.find((page) => page.home_section_id === sectionId) ?? null;
+}
+
+function resourcesInPlacement(
+  resources: Resource[],
+  placements: ContentPlacement[],
+  relations: ContentPlacementRelation[],
+  placementSlug: string,
+) {
+  const placement = placementBySlug(placements, placementSlug);
+  if (!placement) {
+    return [] as Resource[];
+  }
+
+  const resourceIds = new Set(
+    relations
+      .filter(
+        (relation) =>
+          relation.placement_id === placement.id && relation.is_active,
+      )
+      .map((relation) => relation.resource_id),
+  );
+
+  return resources.filter(
+    (resource) => resource.is_published && resourceIds.has(resource.id),
+  );
 }
 
 function placementContentCount(
@@ -481,7 +511,7 @@ function ResourceEditor({
   submitLabel: string;
 }) {
   return (
-    <form action={action} className="grid gap-6">
+    <form action={action} encType="multipart/form-data" className="grid gap-6">
       {resource ? <input type="hidden" name="id" defaultValue={resource.id} /> : null}
       <div className="grid gap-5 xl:grid-cols-2">
         <FieldHelp
@@ -674,6 +704,70 @@ function ResourceEditor({
             defaultValue={resource?.use_cases ?? ""}
             placeholder="例如：选题调研、脚本生成、资料总结"
             className={textareaClass()}
+          />
+        </FieldHelp>
+      </div>
+
+      <div className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
+        <h3 className="text-sm font-semibold text-white">附件 / 视频</h3>
+        <p className="mt-1 text-xs leading-5 text-slate-500">
+          可上传 PDF、压缩包、图片或 MP4/WebM 视频。视频会在详情页内嵌播放；文件提供下载链接。
+        </p>
+        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          <FieldHelp
+            label="媒体类型"
+            description="选择 none 表示仅文字内容；上传文件后系统会自动识别视频或文件。"
+            placeholder="none"
+            frontPosition="资源详情页媒体区"
+          >
+            <select
+              name="media_type"
+              defaultValue={resource?.media_type ?? "none"}
+              className={fieldClass()}
+            >
+              <option value="none">无附件</option>
+              <option value="file">上传文件</option>
+              <option value="video">上传视频</option>
+              <option value="link">外部链接</option>
+            </select>
+          </FieldHelp>
+          <FieldHelp
+            label="上传文件"
+            description="最大 50MB。保存时会上传到 Supabase Storage。"
+            placeholder="选择文件"
+            frontPosition="资源详情页"
+          >
+            <input name="media_file" type="file" className={fieldClass()} />
+          </FieldHelp>
+        </div>
+        {resource?.media_url ? (
+          <div className="mt-3 rounded-md border border-white/10 bg-black/20 p-3 text-xs text-slate-400">
+            <p>
+              当前：
+              {resource.media_type === "video" ? "视频" : resource.media_type === "file" ? "文件" : "链接"}
+              {resource.media_file_name ? ` · ${resource.media_file_name}` : ""}
+            </p>
+            <p className="mt-1 break-all text-slate-500">{resource.media_url}</p>
+            <label className="mt-3 flex items-center gap-2 text-sm text-pink-100">
+              <input name="clear_media" type="checkbox" className="size-4 accent-pink-300" />
+              清除当前附件/视频
+            </label>
+          </div>
+        ) : null}
+        <FieldHelp
+          label="外部媒体链接"
+          description="当媒体类型为「外部链接」时填写；也可作为下载备用地址。"
+          placeholder="https://..."
+          frontPosition="资源详情页"
+        >
+          <input
+            name="media_url"
+            type="url"
+            defaultValue={
+              resource?.media_type === "link" ? resource.media_url ?? "" : ""
+            }
+            placeholder="视频或文件的外部 URL"
+            className={fieldClass()}
           />
         </FieldHelp>
       </div>
@@ -1328,16 +1422,38 @@ function PlacementsView({ placements }: { placements: ContentPlacement[] }) {
   );
 }
 
+function availableHomeSectionsForPage(
+  homeSections: HomeSection[],
+  pages: ContentPage[],
+  currentPageId?: string,
+) {
+  const takenIds = new Set(
+    pages
+      .filter((page) => page.id !== currentPageId && page.home_section_id)
+      .map((page) => page.home_section_id as string),
+  );
+
+  return homeSections.filter(
+    (section) =>
+      section.section_type === "homepage_entry" &&
+      section.is_active &&
+      !takenIds.has(section.id),
+  );
+}
+
 function PagesView({
   pages,
   placements,
   relations,
+  homeSections,
 }: {
   pages: ContentPage[];
   placements: ContentPlacement[];
   relations: ContentPlacementRelation[];
+  homeSections: HomeSection[];
 }) {
   const activePlacements = placements.filter((placement) => placement.is_active);
+  const availableEntries = availableHomeSectionsForPage(homeSections, pages);
 
   return (
     <CardShell className="p-6">
@@ -1348,14 +1464,12 @@ function PagesView({
       />
 
       <div className="mb-5 rounded-lg border border-cyan-300/15 bg-cyan-300/[0.06] p-4 text-sm leading-6 text-slate-400">
-        <p className="font-medium text-cyan-50">二层栏目怎么和前台对应：</p>
+        <p className="font-medium text-cyan-50">正确顺序：先第一层，再第二层</p>
         <p className="mt-1">
-          首页入口卡片只负责“跳到哪里”；栏目页负责“这个页面长什么样、读哪些内容”。
-          这里的内容来源位置来自 content_placements，例如“AI工具页”“教程页”“资源库”。
+          请先在「第一层：首页管理」创建入口，再在这里把栏目页挂载到该入口。前台点击第一层卡片会进入第二层。
         </p>
         <p className="mt-1">
-          如果你要改 /tools、/roadmap 这些已有栏目，不要在上方重复新增，直接编辑下方已有栏目卡片。
-          如果新增 /tiktok-ai 这类新栏目，前端会通过动态栏目路由自动展示，但还需要在“首页管理”新增一个入口卡片指向这个路径。
+          已有 /tools、/roadmap 等默认栏目请在下方编辑，不要重复新增。
         </p>
       </div>
 
@@ -1365,13 +1479,31 @@ function PagesView({
       >
         <h3 className="text-base font-semibold text-white">新增栏目页</h3>
         <p className="text-sm leading-6 text-slate-500">
-          运营时只需要先填栏目名称。Slug、页面路径、内容来源位置可以留空，系统会自动生成；也可以勾选“同时显示到首页入口”。
+          必须选择尚未绑定栏目的第一层入口。Slug、路径、内容来源可留空自动生成。
         </p>
         <div className="grid gap-4 lg:grid-cols-2">
-          <FieldHelp label="页面名称" required description="后台列表中显示的栏目名称。" placeholder="例如：TikTok AI 运营" frontPosition="后台栏目页列表、导航说明">
+          <FieldHelp
+            label="挂载到第一层入口"
+            required
+            description="只能选还没有栏目页的首页入口。"
+            placeholder="选择入口"
+            frontPosition="首页入口 → 本栏目"
+          >
+            <select name="home_section_id" required className={fieldClass()} defaultValue="">
+              <option value="" disabled>
+                {availableEntries.length > 0 ? "选择第一层入口" : "请先到第一层创建入口"}
+              </option>
+              {availableEntries.map((section) => (
+                <option key={section.id} value={section.id}>
+                  {section.title}
+                </option>
+              ))}
+            </select>
+          </FieldHelp>
+          <FieldHelp label="页面名称" required description="栏目名称。" placeholder="TikTok AI 运营" frontPosition="栏目列表">
             <input name="title" required placeholder="TikTok AI 运营" className={fieldClass()} />
           </FieldHelp>
-          <FieldHelp label="页面描述" description="解释该栏目收录什么内容，给管理员和前台用户一个明确预期。" placeholder="围绕短视频选题、脚本、素材、发布和复盘的 AI 工作流。" frontPosition="栏目页 Hero / 描述">
+          <FieldHelp label="页面描述" description="栏目说明。" placeholder="短视频 AI 工作流..." frontPosition="栏目 Hero">
             <textarea name="hero_description" rows={3} className={textareaClass()} />
           </FieldHelp>
         </div>
@@ -1411,26 +1543,6 @@ function PagesView({
             <input name="sort_order" type="number" defaultValue="100" className={fieldClass()} />
           </div>
         </details>
-
-        <div className="grid gap-3 rounded-lg border border-cyan-300/15 bg-cyan-300/[0.055] p-4">
-          <label className="flex items-center gap-2 text-sm font-semibold text-cyan-50">
-            <input name="create_home_entry" type="checkbox" defaultChecked className="size-4 accent-cyan-300" />
-            同时显示到首页入口
-          </label>
-          <p className="text-xs leading-5 text-slate-500">
-            勾选后会自动在第一层首页创建入口卡片，点击直接进入这个新栏目。
-          </p>
-          <div className="grid gap-3 lg:grid-cols-3">
-            <select name="home_section_type" defaultValue="homepage_entry" className={fieldClass()}>
-              <option value="homepage_entry">首页核心入口区</option>
-              <option value="product_entry">首页产品入口区</option>
-              <option value="footer_navigation">Footer 导航区</option>
-            </select>
-            <input name="home_entry_badge" placeholder="入口 Badge，可选" className={fieldClass()} />
-            <input name="home_entry_icon" placeholder="入口图标，可选，例如 Wrench" className={fieldClass()} />
-          </div>
-          <textarea name="home_entry_description" rows={2} placeholder="首页入口说明，可留空自动使用栏目描述" className={textareaClass()} />
-        </div>
 
         <label className="flex items-center gap-2 text-sm text-slate-300">
           <input name="is_active" type="checkbox" defaultChecked className="size-4 accent-cyan-300" />
@@ -1475,7 +1587,23 @@ function PagesView({
 
               <form action={updateContentPageAction} className="grid gap-3">
                 <input type="hidden" name="id" value={page.id} />
-                <div className="grid gap-3 lg:grid-cols-4">
+                <div className="grid gap-3 lg:grid-cols-5">
+                  <select
+                    name="home_section_id"
+                    defaultValue={page.home_section_id ?? ""}
+                    className={fieldClass()}
+                  >
+                    {[
+                      ...availableHomeSectionsForPage(homeSections, pages, page.id),
+                      ...(page.home_section_id
+                        ? homeSections.filter((s) => s.id === page.home_section_id)
+                        : []),
+                    ].map((section) => (
+                      <option key={section.id} value={section.id}>
+                        {section.title}
+                      </option>
+                    ))}
+                  </select>
                   <input name="title" defaultValue={page.title} className={fieldClass()} />
                   <input name="slug" defaultValue={page.slug} className={fieldClass()} />
                   <input name="page_path" defaultValue={page.page_path} className={fieldClass()} />
@@ -1530,15 +1658,120 @@ function PagesView({
   );
 }
 
+function HomepageModulesEditor({
+  settings,
+  resources,
+  placements,
+  relations,
+}: {
+  settings: SiteSettings;
+  resources: Resource[];
+  placements: ContentPlacement[];
+  relations: ContentPlacementRelation[];
+}) {
+  const featured = resourcesInPlacement(resources, placements, relations, "home-featured");
+  const hot = resourcesInPlacement(resources, placements, relations, "home-hot");
+  const latest = resourcesInPlacement(resources, placements, relations, "home-latest");
+
+  const modules = [
+    {
+      key: "featured",
+      label: settings.homepage_featured_title,
+      toggle: "show_homepage_featured",
+      enabled: settings.show_homepage_featured,
+      items: featured,
+      hint: "在内容发布时勾选「推荐」，或加入「首页精选」发布位置",
+    },
+    {
+      key: "hot",
+      label: "热门内容",
+      toggle: "show_homepage_hot",
+      enabled: settings.show_homepage_hot,
+      items: hot,
+      hint: "勾选「热门」或加入「首页热门」发布位置",
+    },
+    {
+      key: "latest",
+      label: "最新发布",
+      toggle: "show_homepage_latest",
+      enabled: settings.show_homepage_latest,
+      items: latest,
+      hint: "将内容发布到「首页最新」发布位置",
+    },
+  ] as const;
+
+  return (
+    <div className="mt-6 rounded-lg border border-white/10 bg-white/[0.03] p-4">
+      <h3 className="text-lg font-semibold text-white">首页推荐列表（文字链接）</h3>
+      <p className="mt-1 text-sm text-slate-500">
+        下方开关控制前台是否显示对应区块。只有开启且列表中有内容时才会出现。在「第三层：内容管理」为内容选择发布位置。
+      </p>
+      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+        <FieldHelp label="精选区标题" description="首页精选区块标题。" placeholder="精选资源与工作流" frontPosition="首页 Featured 标题">
+          <input name="homepage_featured_title" defaultValue={settings.homepage_featured_title} className={fieldClass()} />
+        </FieldHelp>
+        <FieldHelp label="精选区说明" description="首页精选区块副标题。" placeholder="优先展示..." frontPosition="首页 Featured 描述">
+          <input name="homepage_featured_description" defaultValue={settings.homepage_featured_description} className={fieldClass()} />
+        </FieldHelp>
+      </div>
+      <div className="mt-4 flex flex-wrap gap-4 text-sm text-slate-300">
+        <label className="flex items-center gap-2">
+          <input name="show_homepage_featured" type="checkbox" defaultChecked={settings.show_homepage_featured} className="size-4 accent-cyan-300" />
+          显示精选区
+        </label>
+        <label className="flex items-center gap-2">
+          <input name="show_homepage_hot" type="checkbox" defaultChecked={settings.show_homepage_hot} className="size-4 accent-cyan-300" />
+          显示热门区
+        </label>
+        <label className="flex items-center gap-2">
+          <input name="show_homepage_latest" type="checkbox" defaultChecked={settings.show_homepage_latest} className="size-4 accent-cyan-300" />
+          显示最新区
+        </label>
+      </div>
+      <div className="mt-5 grid gap-4 lg:grid-cols-3">
+        {modules.map((module) => (
+          <div key={module.key} className="rounded-md border border-white/10 bg-black/20 p-3">
+            <div className="flex items-center justify-between gap-2">
+              <h4 className="text-sm font-semibold text-white">{module.label}</h4>
+              <span className={module.enabled ? "text-xs text-emerald-300" : "text-xs text-slate-500"}>
+                {module.enabled ? "已开启" : "已关闭"}
+              </span>
+            </div>
+            <p className="mt-1 text-xs text-slate-500">{module.hint}</p>
+            <p className="mt-2 text-xs text-slate-400">当前 {module.items.length} 条</p>
+            {module.items.length > 0 ? (
+              <ul className="mt-2 space-y-1 text-xs text-cyan-100">
+                {module.items.slice(0, 5).map((item) => (
+                  <li key={item.id} className="truncate">
+                    {item.title}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-2 text-xs text-slate-600">暂无内容</p>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function HomepageView({
   settings,
   homeSections,
   contentPages,
+  resources,
+  placements,
+  relations,
   editingSectionId,
 }: {
   settings: SiteSettings;
   homeSections: HomeSection[];
   contentPages: ContentPage[];
+  resources: Resource[];
+  placements: ContentPlacement[];
+  relations: ContentPlacementRelation[];
   editingSectionId?: string;
 }) {
   return (
@@ -1595,9 +1828,13 @@ function HomepageView({
         <input type="hidden" name="brand_name" value={settings.brand_name} />
         <input type="hidden" name="site_tagline" value={settings.site_tagline} />
         <input type="hidden" name="footer_description" value={settings.footer_description} />
-        <input type="hidden" name="homepage_featured_title" value={settings.homepage_featured_title} />
-        <input type="hidden" name="homepage_featured_description" value={settings.homepage_featured_description} />
-        <button className="w-fit rounded-md bg-cyan-300 px-4 py-2.5 text-sm font-semibold text-slate-950">保存首页文案</button>
+        <HomepageModulesEditor
+          settings={settings}
+          resources={resources}
+          placements={placements}
+          relations={relations}
+        />
+        <button className="w-fit rounded-md bg-cyan-300 px-4 py-2.5 text-sm font-semibold text-slate-950">保存首页文案与推荐区</button>
       </form>
       <HomeSectionsEditor
         homeSections={homeSections}
@@ -1624,8 +1861,8 @@ function HomeSectionsEditor({
     <div className="mt-6">
       <h3 className="text-lg font-semibold text-white">首页入口卡片</h3>
       <p className="mt-1 text-sm text-slate-500">
-        这里管理前端“核心入口”卡片，保存到 home_sections，不属于发布位置。
-        每个入口都应跳到一个明确的二级栏目页，后台会提示是否匹配。
+        先在这里创建第一层入口（标题、说明、图标）。第二层栏目页会挂载到入口上；前台点击卡片后进入已挂载的栏目。
+        不要在这里填写跳转链接。
       </p>
       <form
         action={editingSection ? updateHomeSectionAction : createHomeSectionAction}
@@ -1651,16 +1888,6 @@ function HomeSectionsEditor({
           <FieldHelp label="入口标题" required description="显示在首页入口卡片顶部，告诉用户要进入哪个栏目。" placeholder="例如：AI 工具库" frontPosition="首页 Hero 下方入口卡片 / 标题">
             <input name="title" required defaultValue={editingSection?.title ?? ""} placeholder="AI 工具库" className={fieldClass()} />
           </FieldHelp>
-          <LinkPicker
-            name="href"
-            label="跳转链接"
-            required
-            description="点击入口后进入的第二层页面路径。优先从已创建栏目中选择。"
-            placeholder="/tools"
-            frontPosition="首页入口卡片 / 点击目标"
-            contentPages={contentPages}
-            defaultValue={editingSection?.href ?? ""}
-          />
           <FieldHelp label="Badge" description="显示在入口卡片上的短标签。" placeholder="Tool Library" frontPosition="首页入口卡片 / 小标签">
             <input name="badge" defaultValue={editingSection?.badge ?? ""} placeholder="Tool Library" className={fieldClass()} />
           </FieldHelp>
@@ -1690,7 +1917,7 @@ function HomeSectionsEditor({
       </form>
       <div className="mt-4 space-y-3">
         {homeSections.map((section) => {
-          const matchedPage = pageByPath(contentPages, section.href);
+          const matchedPage = pageByHomeSection(contentPages, section.id);
 
           return (
             <div key={section.id} className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
@@ -1715,10 +1942,10 @@ function HomeSectionsEditor({
                     <span>前端位置：首页入口卡片区 / {section.section_type}</span>
                     <span>跳转目标：{section.href}</span>
                     <span>
-                      关联栏目：
+                      第二层栏目：
                       {matchedPage
                         ? `${matchedPage.title}（${matchedPage.page_path}）`
-                        : "未匹配到已配置栏目页，请确认链接是否正确"}
+                        : "尚未挂载，请到「第二层：栏目管理」创建并选择本入口"}
                     </span>
                     <span>图标：{section.icon || "未设置"} · 图片：{section.image_url || "未设置"}</span>
                   </div>
@@ -1727,10 +1954,14 @@ function HomeSectionsEditor({
                   <Link href={`/admin?section=homepage&editEntry=${section.id}`} className={pillClass()}>
                     编辑
                   </Link>
-                  <Link href={section.href} className={pillClass()}>
-                    预览
-                  </Link>
-                  <CopyLinkButton href={section.href} className={pillClass()} />
+                  {matchedPage ? (
+                    <>
+                      <Link href={matchedPage.page_path} className={pillClass()}>
+                        预览栏目
+                      </Link>
+                      <CopyLinkButton href={matchedPage.page_path} className={pillClass()} />
+                    </>
+                  ) : null}
                 </div>
               </div>
               <div className="mt-4 flex flex-wrap gap-2 border-t border-white/8 pt-4">
@@ -2024,6 +2255,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
               pages={contentPages}
               placements={contentPlacements}
               relations={placementRelations}
+              homeSections={homeSections}
             />
           ) : null}
 
@@ -2056,6 +2288,9 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
               settings={settings}
               homeSections={homeSections}
               contentPages={contentPages}
+              resources={resources}
+              placements={contentPlacements}
+              relations={placementRelations}
               editingSectionId={params?.editEntry}
             />
           ) : null}
