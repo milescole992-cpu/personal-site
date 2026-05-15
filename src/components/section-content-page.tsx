@@ -5,6 +5,7 @@ import { CardShell } from "@/components/card-shell";
 import { ResourceMiniCard } from "@/components/resource-mini-card";
 import type { ContentPage } from "@/lib/supabase";
 import type { ResourceWithState } from "@/lib/data";
+import { getResourceSlug } from "@/lib/slug";
 
 type SectionSearchParams = {
   q?: string;
@@ -226,14 +227,68 @@ export function SectionContentPage({
         ) : null}
 
         {!disabled && variant === "compact" ? (
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {filteredResources.map((resource) => (
-              <ResourceMiniCard key={resource.id} resource={resource} />
-            ))}
-          </div>
+          <SectionResourceDirectory resources={filteredResources} />
         ) : null}
       </div>
     </main>
+  );
+}
+
+function SectionResourceDirectory({
+  resources,
+}: {
+  resources: ResourceWithState[];
+}) {
+  if (resources.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="grid gap-4 lg:grid-cols-[minmax(0,720px)_1fr]">
+      <CardShell className="p-4">
+        <div className="mb-3 flex items-end justify-between gap-4 border-b border-white/8 pb-3">
+          <div>
+            <p className="mb-0.5 font-mono text-[10px] uppercase tracking-[0.24em] text-cyan-300/70">
+              Directory
+            </p>
+            <h2 className="text-lg font-semibold text-white">内容目录</h2>
+          </div>
+          <span className="rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1 text-xs text-slate-500">
+            {resources.length} 条
+          </span>
+        </div>
+        <ul className="divide-y divide-white/8">
+          {resources.map((resource, index) => (
+            <li key={resource.id}>
+              <Link
+                href={`/resources/${getResourceSlug(resource)}`}
+                className="grid grid-cols-[28px_minmax(0,1fr)_auto] items-center gap-3 rounded-md px-2 py-2.5 text-sm transition hover:bg-white/[0.04]"
+              >
+                <span className="font-mono text-[11px] text-slate-600">
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                <span className="min-w-0 truncate font-medium text-slate-100">
+                  {resource.title}
+                </span>
+                <span className="shrink-0 rounded bg-white/5 px-2 py-1 text-[11px] text-slate-500">
+                  {resource.category || resource.resource_type}
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </CardShell>
+
+      <CardShell className="hidden p-4 lg:block" glow="none">
+        <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-slate-600">
+          Browse
+        </p>
+        <h3 className="mt-2 text-base font-semibold text-white">点击标题进入详情</h3>
+        <p className="mt-2 text-sm leading-6 text-slate-500">
+          二层栏目只做内容导航和筛选，具体介绍、收藏、下载和访问按钮放在三层详情页处理。
+        </p>
+      </CardShell>
+    </div>
   );
 }
 
