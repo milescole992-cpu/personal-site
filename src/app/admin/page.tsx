@@ -437,56 +437,79 @@ function SectionHeader({
   );
 }
 
-function PlacementChecklist({
+function publishingTargets(
+  homeSections: HomeSection[],
+  pages: ContentPage[],
+  placements: ContentPlacement[],
+) {
+  return homeSections
+    .filter((section) => section.section_type === "homepage_entry" && section.is_active)
+    .map((section) => {
+      const page = pageByHomeSection(pages, section.id);
+      const placement = page ? placementBySlug(placements, page.placement_slug) : null;
+
+      return { section, page, placement };
+    })
+    .filter(
+      (
+        target,
+      ): target is {
+        section: HomeSection;
+        page: ContentPage;
+        placement: ContentPlacement;
+      } => Boolean(target.page && target.placement && target.placement.is_active),
+    );
+}
+
+function PublishingTargetChecklist({
+  homeSections,
+  pages,
   placements,
   selectedIds,
 }: {
+  homeSections: HomeSection[];
+  pages: ContentPage[];
   placements: ContentPlacement[];
   selectedIds?: Set<string>;
 }) {
-  return (
-    <div className="grid gap-2 md:grid-cols-2">
-      {placements.map((placement) => {
-        const controlledByFlag =
-          placement.slug === "home-featured" || placement.slug === "home-hot";
+  const targets = publishingTargets(homeSections, pages, placements);
 
-        return (
-          <label
-            key={placement.id}
-            className="flex items-start gap-3 rounded-md border border-white/10 bg-white/[0.03] p-3 text-sm text-slate-300"
-          >
-            <input
-              name="placement_ids"
-              type="checkbox"
-              value={placement.id}
-              defaultChecked={selectedIds?.has(placement.id)}
-              disabled={controlledByFlag}
-              className="mt-1 size-4 accent-cyan-300 disabled:opacity-45"
-            />
-            <span>
-              <span className="block font-medium text-white">{placement.name}</span>
-              <span className="mt-1 block text-xs leading-5 text-slate-500">
-                显示到 {placement.page_path} · 模块 key：{placement.placement_key}
-              </span>
-              {controlledByFlag ? (
-                <span className="mt-1 block text-xs leading-5 text-cyan-200">
-                  由下方“推荐/热门”勾选自动控制，不需要在这里手动选择。
-                </span>
-              ) : null}
-              {placement.description ? (
-                <span className="mt-1 block text-xs leading-5 text-slate-500">
-                  {placement.description}
-                </span>
-              ) : null}
-            </span>
-          </label>
-        );
-      })}
-      {placements.length === 0 ? (
-        <p className="rounded-md border border-pink-300/20 bg-pink-300/8 p-3 text-sm text-pink-100">
-          还没有可用发布位置。请先到“发布位置管理”新增资源库、首页精选等位置。
+  if (targets.length === 0) {
+    return (
+      <div className="rounded-lg border border-amber-300/20 bg-amber-300/8 p-4">
+        <h3 className="text-sm font-semibold text-amber-100">还没有可发布的栏目</h3>
+        <p className="mt-2 text-xs leading-5 text-slate-400">
+          请先完成：第一层创建首页核心入口 → 第二层把栏目页挂载到入口。完成后，这里会自动出现可选发布目标。
         </p>
-      ) : null}
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid gap-3 md:grid-cols-2">
+      {targets.map(({ section, page, placement }) => (
+        <label
+          key={placement.id}
+          className="flex cursor-pointer items-start gap-3 rounded-lg border border-white/10 bg-white/[0.03] p-4 text-sm text-slate-300 transition hover:border-cyan-300/30 hover:bg-white/[0.05]"
+        >
+          <input
+            name="placement_ids"
+            type="checkbox"
+            value={placement.id}
+            defaultChecked={selectedIds?.has(placement.id)}
+            className="mt-1 size-4 accent-cyan-300"
+          />
+          <span className="min-w-0">
+            <span className="block font-semibold text-white">{section.title}</span>
+            <span className="mt-1 block text-xs leading-5 text-cyan-100">
+              发布到二层栏目：{page.title}
+            </span>
+            <span className="mt-1 block text-xs leading-5 text-slate-500">
+              前端路径：{page.page_path} · 内容来源：{placement.name}
+            </span>
+          </span>
+        </label>
+      ))}
     </div>
   );
 }
@@ -496,6 +519,8 @@ function ResourceEditor({
   resource,
   contentTypes,
   placements,
+  homeSections,
+  contentPages,
   selectedIds,
   submitLabel,
 }: {
@@ -503,12 +528,18 @@ function ResourceEditor({
   resource?: Resource;
   contentTypes: ContentType[];
   placements: ContentPlacement[];
+  homeSections: HomeSection[];
+  contentPages: ContentPage[];
   selectedIds?: Set<string>;
   submitLabel: string;
 }) {
+  const fallbackContentTypeId = resource?.content_type_id ?? contentTypes[0]?.id ?? "";
+
   return (
     <form action={action} encType="multipart/form-data" className="grid gap-6">
       {resource ? <input type="hidden" name="id" defaultValue={resource.id} /> : null}
+      <input type="hidden" name="content_type_id" value={fallbackContentTypeId} />
+      <input type="hidden" name="resource_type" value={resource?.resource_type ?? "resource"} />
       <div className="grid gap-5 xl:grid-cols-2">
         <FieldHelp
           label="内容标题"
@@ -542,29 +573,22 @@ function ResourceEditor({
         </FieldHelp>
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-3">
-        <FieldHelp
-          label="内容类型"
-          required
-          description="这不是写死的枚举，而是来自 content_types。它帮助后台理解这条内容属于工具、教程、路线还是工作流。"
-          placeholder="请选择内容类型"
-          example="AI工具"
-          frontPosition="后台筛选、资源标签、后续栏目聚合"
-        >
-          <select
-            name="content_type_id"
-            required
-            defaultValue={resource?.content_type_id ?? ""}
-            className={fieldClass()}
-          >
-            <option value="">请选择内容类型</option>
-            {contentTypes.map((type) => (
-              <option key={type.id} value={type.id}>
-                {type.name} · {type.slug}
-              </option>
-            ))}
-          </select>
-        </FieldHelp>
+      <FieldHelp
+        label="发布到哪个首页入口 / 二层栏目"
+        description="这里不再让你同时选择内容类型和发布位置。只显示第一层首页核心入口已经挂载好的二层栏目，勾选后内容会出现在对应栏目。"
+        placeholder="先在第一层创建入口，再在第二层挂载栏目"
+        example="TikTok 运营 / AI工具分享 / 未来 SaaS 产品 / 工程数字化"
+        frontPosition="首页核心入口 → 二层栏目页 → 三层详情页"
+      >
+        <PublishingTargetChecklist
+          homeSections={homeSections}
+          pages={contentPages}
+          placements={placements}
+          selectedIds={selectedIds}
+        />
+      </FieldHelp>
+
+      <div className="grid gap-5 xl:grid-cols-2">
         <FieldHelp
           label="分类"
           description="当前保存在 resources.category，用于资源库筛选和卡片分类。"
@@ -579,32 +603,7 @@ function ResourceEditor({
             className={fieldClass()}
           />
         </FieldHelp>
-        <FieldHelp
-          label="兼容资源类型"
-          description="保留旧数据兼容字段；新逻辑优先使用内容类型和发布位置。"
-          placeholder="resource / tool / workflow / tutorial"
-          example="tool"
-          frontPosition="旧数据兼容，不作为主要发布逻辑"
-        >
-          <input
-            name="resource_type"
-            defaultValue={resource?.resource_type ?? "resource"}
-            placeholder="resource"
-            className={fieldClass()}
-          />
-        </FieldHelp>
       </div>
-
-      <FieldHelp
-        label="发布位置"
-        required
-        description="决定这条内容会出现在哪些前台页面或模块。一个内容可以同时在资源库、工具页和首页精选展示。"
-        placeholder="请选择：资源库 / 工具页 / 首页精选"
-        example="资源库 + AI工具页 + 首页精选"
-        frontPosition="所选发布位置对应的前台页面或首页模块"
-      >
-        <PlacementChecklist placements={placements} selectedIds={selectedIds} />
-      </FieldHelp>
 
       <FieldHelp
         label="内容简介"
@@ -2222,12 +2221,14 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
               <SectionHeader
                 eyebrow="Create"
                 title="内容发布"
-                description="先选内容类型，再选发布位置，最后决定保存草稿还是发布上线。选择了发布位置后，前台对应页面才会显示。"
+                description="直接选择要发布到哪个首页核心入口下的二层栏目。内容类型和底层发布位置由系统兼容处理，日常运营不用管。"
               />
               <ResourceEditor
                 action={createResourceAction}
                 contentTypes={activeTypes}
                 placements={activePlacements}
+                homeSections={homeSections}
+                contentPages={contentPages}
                 submitLabel="保存内容"
               />
             </CardShell>
@@ -2260,7 +2261,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
               <SectionHeader
                 eyebrow="Edit"
                 title="编辑内容"
-                description="修改内容类型、发布位置、正文和展示属性后，前台会按新的发布关系展示。"
+                description="修改内容正文和所属栏目后，前台会按新的栏目关系展示。"
               />
               {editingResource ? (
                 <ResourceEditor
@@ -2268,6 +2269,8 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                   resource={editingResource}
                   contentTypes={activeTypes}
                   placements={activePlacements}
+                  homeSections={homeSections}
+                  contentPages={contentPages}
                   selectedIds={relationIds(editingResource.id, placementRelations)}
                   submitLabel="保存修改"
                 />
