@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { isAdminEmail } from "@/lib/auth-utils";
-import { defaultSiteSettings } from "@/lib/data";
+import { defaultContentPages, defaultSiteSettings } from "@/lib/data";
 import { getSupabaseServiceClient } from "@/lib/supabase";
 
 function formText(formData: FormData, key: string) {
@@ -538,17 +538,19 @@ export async function updateContentPageAction(formData: FormData) {
     !payload.title ||
     !payload.slug ||
     !payload.page_path ||
-    !payload.home_section_id
+    (!payload.home_section_id && !isLockedResourcePage(payload))
   ) {
     adminRedirect("content-page-update-failed", "pages");
   }
 
-  const { data: conflictingPage } = await supabase
-    .from("content_pages")
-    .select("id")
-    .eq("home_section_id", payload.home_section_id)
-    .neq("id", id)
-    .maybeSingle();
+  const { data: conflictingPage } = payload.home_section_id
+    ? await supabase
+        .from("content_pages")
+        .select("id")
+        .eq("home_section_id", payload.home_section_id)
+        .neq("id", id)
+        .maybeSingle()
+    : { data: null };
 
   if (payload.home_section_id && conflictingPage) {
     adminRedirect("content-page-home-section-taken", "pages");
@@ -569,6 +571,69 @@ export async function updateContentPageAction(formData: FormData) {
   revalidateCmsPaths();
   revalidatePath(payload.page_path);
   adminRedirect("content-page-updated", "pages");
+}
+
+export async function restoreCoreResourcePageAction() {
+  await requireAdmin();
+  const supabase = getSupabaseServiceClient();
+  const fallback = defaultContentPages.find((page) => page.slug === "resources");
+
+  if (!supabase || !fallback) {
+    adminRedirect("content-page-failed", "pages");
+  }
+
+  const { error: placementError } = await supabase
+    .from("content_placements")
+    .upsert(
+      {
+        name: "综合资源",
+        slug: "resources",
+        description: "所有已发布内容都会在综合资源页统一检索和进入详情。",
+        page_path: "/resources",
+        placement_key: "resources",
+        sort_order: 1,
+        is_active: true,
+      },
+      { onConflict: "slug" },
+    );
+
+  if (placementError) {
+    console.error("Failed to restore resources placement", placementError.message);
+    adminRedirect("content-page-failed", "pages");
+  }
+
+  const { error } = await supabase
+    .from("content_pages")
+    .upsert(
+      {
+        title: "综合资源",
+        slug: fallback.slug,
+        page_path: fallback.page_path,
+        description: fallback.description,
+        hero_title: fallback.hero_title,
+        hero_subtitle: fallback.hero_subtitle,
+        hero_description: fallback.hero_description,
+        seo_title: fallback.seo_title,
+        seo_description: fallback.seo_description,
+        empty_state_title: fallback.empty_state_title,
+        empty_state_description: fallback.empty_state_description,
+        primary_cta_text: fallback.primary_cta_text,
+        primary_cta_href: fallback.primary_cta_href,
+        placement_slug: fallback.placement_slug,
+        home_section_id: null,
+        sort_order: 1,
+        is_active: true,
+      },
+      { onConflict: "slug" },
+    );
+
+  if (error) {
+    console.error("Failed to restore resources page", error.message);
+    adminRedirect("content-page-failed", "pages");
+  }
+
+  revalidateCmsPaths();
+  adminRedirect("content-page-restored", "pages");
 }
 
 export async function deleteContentPageAction(formData: FormData) {

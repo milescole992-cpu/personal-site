@@ -27,6 +27,7 @@ import {
   deleteContentTypeAction,
   deleteHomeSectionAction,
   deletePlacementAction,
+  restoreCoreResourcePageAction,
   updateContentPageAction,
   updateContentTypeAction,
   updateHomeSectionAction,
@@ -107,6 +108,7 @@ const statusMessages: Record<string, string> = {
   "content-page-update-failed": "栏目页更新失败。",
   "content-page-delete-failed": "栏目页删除失败。",
   "content-page-locked": "综合资源是核心栏目，不能删除；你可以编辑它的标题、描述和 SEO。",
+  "content-page-restored": "综合资源核心栏目已恢复，现在可以在第二层栏目管理里编辑。",
   "content-type-created": "内容类型已创建，可在内容发布时选择。",
   "content-type-updated": "内容类型已更新。",
   "content-type-deleted": "内容类型已删除。",
@@ -213,8 +215,8 @@ const sectionGroups: Array<{
   },
   {
     title: "基础配置",
-    description: "不常改，但决定后台可选项",
-    ids: ["settings", "placements", "content-types", "taxonomy"],
+    description: "只保留经常需要改的站点文案",
+    ids: ["settings"],
   },
   {
     title: "用户与审核",
@@ -491,30 +493,35 @@ function PublishingTargetChecklist({
   }
 
   return (
-    <div className="grid gap-3 md:grid-cols-2">
-      {targets.map(({ section, page, placement }) => (
-        <label
-          key={placement.id}
-          className="flex cursor-pointer items-start gap-3 rounded-lg border border-white/10 bg-white/[0.03] p-4 text-sm text-slate-300 transition hover:border-cyan-300/30 hover:bg-white/[0.05]"
-        >
-          <input
-            name="placement_ids"
-            type="checkbox"
-            value={placement.id}
-            defaultChecked={selectedIds?.has(placement.id)}
-            className="mt-1 size-4 accent-cyan-300"
-          />
-          <span className="min-w-0">
-            <span className="block font-semibold text-white">{section.title}</span>
-            <span className="mt-1 block text-xs leading-5 text-cyan-100">
-              发布到二层栏目：{page.title}
+    <div>
+      <div className="mb-3 rounded-md border border-cyan-300/15 bg-cyan-300/[0.055] px-3 py-2 text-xs leading-5 text-slate-400">
+        只要内容设为“已发布”，就会进入锁定的「综合资源」页。下面这些选项决定它额外出现在哪个首页入口对应的二层栏目里。
+      </div>
+      <div className="grid gap-3 md:grid-cols-2">
+        {targets.map(({ section, page, placement }) => (
+          <label
+            key={placement.id}
+            className="flex cursor-pointer items-start gap-3 rounded-lg border border-white/10 bg-white/[0.03] p-4 text-sm text-slate-300 transition hover:border-cyan-300/30 hover:bg-white/[0.05]"
+          >
+            <input
+              name="placement_ids"
+              type="checkbox"
+              value={placement.id}
+              defaultChecked={selectedIds?.has(placement.id)}
+              className="mt-1 size-4 accent-cyan-300"
+            />
+            <span className="min-w-0">
+              <span className="block font-semibold text-white">{section.title}</span>
+              <span className="mt-1 block text-xs leading-5 text-cyan-100">
+                发布到二层栏目：{page.title}
+              </span>
+              <span className="mt-1 block text-xs leading-5 text-slate-500">
+                前端路径：{page.page_path} · 内容来源：{placement.name}
+              </span>
             </span>
-            <span className="mt-1 block text-xs leading-5 text-slate-500">
-              前端路径：{page.page_path} · 内容来源：{placement.name}
-            </span>
-          </span>
-        </label>
-      ))}
+          </label>
+        ))}
+      </div>
     </div>
   );
 }
@@ -522,6 +529,7 @@ function PublishingTargetChecklist({
 function ResourceEditor({
   action,
   resource,
+  resources,
   contentTypes,
   placements,
   homeSections,
@@ -531,6 +539,7 @@ function ResourceEditor({
 }: {
   action: (formData: FormData) => void | Promise<void>;
   resource?: Resource;
+  resources: Resource[];
   contentTypes: ContentType[];
   placements: ContentPlacement[];
   homeSections: HomeSection[];
@@ -539,6 +548,16 @@ function ResourceEditor({
   submitLabel: string;
 }) {
   const fallbackContentTypeId = resource?.content_type_id ?? contentTypes[0]?.id ?? "";
+  const suggestedTags = Array.from(
+    new Set(resources.flatMap((item) => item.tags).filter(Boolean)),
+  )
+    .sort()
+    .slice(0, 16);
+  const suggestedCategories = Array.from(
+    new Set(resources.map((item) => item.category).filter(Boolean)),
+  )
+    .sort()
+    .slice(0, 10);
 
   return (
     <form action={action} encType="multipart/form-data" className="grid gap-6">
@@ -593,21 +612,67 @@ function ResourceEditor({
         />
       </FieldHelp>
 
-      <div className="grid gap-5 xl:grid-cols-2">
-        <FieldHelp
-          label="分类"
-          description="当前保存在 resources.category，用于资源库筛选和卡片分类。"
-          placeholder="例如：AI搜索 / 视频创作 / 工程AI"
-          example="AI搜索"
-          frontPosition="资源列表筛选、详情页分类徽标"
-        >
-          <input
-            name="category"
-            defaultValue={resource?.category ?? ""}
-            placeholder="例如：AI搜索"
-            className={fieldClass()}
-          />
-        </FieldHelp>
+      <div className="rounded-lg border border-cyan-300/15 bg-cyan-300/[0.04] p-4">
+        <div className="mb-4">
+          <h3 className="text-base font-semibold text-white">标签与分类</h3>
+          <p className="mt-1 text-sm leading-6 text-slate-500">
+            先写标签，再给一个主分类。标签用于搜索和筛选，分类用于把内容归到更大的主题里。
+          </p>
+        </div>
+        <div className="grid gap-5 xl:grid-cols-[1.4fr_1fr]">
+          <FieldHelp
+            label="标签"
+            description="直接输入并保存即可。多个标签用中文逗号、英文逗号或空格分开。"
+            placeholder="例如：AI搜索, 写作, 通用助手"
+            example="AI搜索,资料检索,研究助手"
+            frontPosition="资源卡片、详情页标签、资源库搜索筛选"
+          >
+            <input
+              name="tags"
+              defaultValue={resource?.tags.join(",") ?? ""}
+              placeholder="输入标签，多个用逗号分隔"
+              className={fieldClass()}
+            />
+            {suggestedTags.length > 0 ? (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {suggestedTags.map((tag) => (
+                  <span key={tag} className="rounded-md border border-white/10 bg-white/[0.04] px-2 py-1 text-[11px] text-slate-400">
+                    #{tag}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+          </FieldHelp>
+          <FieldHelp
+            label="主分类"
+            description="分类比标签更粗，建议从已有标签里概括一个主题，方便资源库搜索。"
+            placeholder="例如：AI搜索 / 视频创作 / 工程AI"
+            example="AI搜索"
+            frontPosition="资源列表筛选、详情页分类徽标"
+          >
+            <input
+              name="category"
+              list="admin-category-suggestions"
+              defaultValue={resource?.category ?? ""}
+              placeholder="例如：AI搜索"
+              className={fieldClass()}
+            />
+            <datalist id="admin-category-suggestions">
+              {suggestedCategories.map((category) => (
+                <option key={category} value={category} />
+              ))}
+            </datalist>
+            {suggestedCategories.length > 0 ? (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {suggestedCategories.map((category) => (
+                  <span key={category} className="rounded-md border border-white/10 bg-white/[0.04] px-2 py-1 text-[11px] text-slate-400">
+                    {category}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+          </FieldHelp>
+        </div>
       </div>
 
       <FieldHelp
@@ -645,20 +710,6 @@ function ResourceEditor({
       </FieldHelp>
 
       <div className="grid gap-5 xl:grid-cols-2">
-        <FieldHelp
-          label="标签"
-          description="英文逗号分隔。用于前台标签展示和后续标签筛选。"
-          placeholder="AI助手,写作,工作流"
-          example="AI搜索,资料检索,研究助手"
-          frontPosition="资源卡片、详情页标签、资源库筛选"
-        >
-          <input
-            name="tags"
-            defaultValue={resource?.tags.join(",") ?? ""}
-            placeholder="AI助手,写作,工作流"
-            className={fieldClass()}
-          />
-        </FieldHelp>
         <FieldHelp
           label="封面图 URL"
           description="当前先填外部 URL；第二阶段会接 Supabase Storage 上传。为空时前端隐藏图片区域。"
@@ -968,15 +1019,11 @@ function ResourceEditor({
 
 function DashboardView({
   resources,
-  contentTypes,
-  placements,
   homeSections,
   contentPages,
   downloadsCount,
 }: {
   resources: Resource[];
-  contentTypes: ContentType[];
-  placements: ContentPlacement[];
   homeSections: HomeSection[];
   contentPages: ContentPage[];
   downloadsCount: number;
@@ -1029,8 +1076,8 @@ function DashboardView({
         <StatCard icon={<BarChart3 size={20} />} label="推荐内容" value={featured.length} />
       </div>
       <div className="mt-4 grid gap-4 md:grid-cols-3">
-        <StatCard icon={<Layers3 size={20} />} label="内容类型" value={contentTypes.length} />
-        <StatCard icon={<Flag size={20} />} label="发布位置" value={placements.length} />
+        <StatCard icon={<Home size={20} />} label="首页入口" value={homeSections.length} />
+        <StatCard icon={<BookOpenText size={20} />} label="栏目页" value={contentPages.length} />
         <StatCard icon={<UsersRound size={20} />} label="下载记录" value={downloadsCount} />
       </div>
       <div className="mt-6 grid gap-4 lg:grid-cols-[1fr_320px]">
@@ -1454,6 +1501,7 @@ function PagesView({
 }) {
   const activePlacements = placements.filter((placement) => placement.is_active);
   const availableEntries = availableHomeSectionsForPage(homeSections, pages);
+  const hasCoreResourcePage = pages.some((page) => isCoreResourcePage(page));
 
   return (
     <CardShell className="p-6">
@@ -1472,6 +1520,24 @@ function PagesView({
           已有 /tools、/roadmap 等默认栏目请在下方编辑，不要重复新增。
         </p>
       </div>
+
+      {!hasCoreResourcePage ? (
+        <div className="mb-5 rounded-lg border border-amber-300/25 bg-amber-300/[0.08] p-4">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <h3 className="text-base font-semibold text-amber-50">综合资源核心栏目未找到</h3>
+              <p className="mt-1 text-sm leading-6 text-slate-400">
+                这是网站的总资源库，对应前台 /resources。它可以编辑标题、描述和 SEO，但不允许删除。
+              </p>
+            </div>
+            <form action={restoreCoreResourcePageAction}>
+              <button className="rounded-md bg-amber-200 px-4 py-2.5 text-sm font-semibold text-slate-950">
+                恢复综合资源栏目
+              </button>
+            </form>
+          </div>
+        </div>
+      ) : null}
 
       <form
         action={createContentPageAction}
@@ -1564,7 +1630,9 @@ function PagesView({
               <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="font-semibold text-white">{page.title}</h3>
+                    <h3 className="font-semibold text-white">
+                      {lockedResourcePage ? `综合资源${page.title === "综合资源" ? "" : ` · ${page.title}`}` : page.title}
+                    </h3>
                     <span className={page.is_active ? "rounded-md bg-emerald-300/8 px-2 py-1 text-xs text-emerald-100" : "rounded-md bg-slate-300/8 px-2 py-1 text-xs text-slate-400"}>
                       {page.is_active ? "启用" : "停用"}
                     </span>
@@ -2234,8 +2302,6 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
           {activeSection === "dashboard" ? (
             <DashboardView
               resources={resources}
-              contentTypes={contentTypes}
-              placements={contentPlacements}
               homeSections={homeSections}
               contentPages={contentPages}
               downloadsCount={downloads.length}
@@ -2251,6 +2317,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
               />
               <ResourceEditor
                 action={createResourceAction}
+                resources={resources}
                 contentTypes={activeTypes}
                 placements={activePlacements}
                 homeSections={homeSections}
@@ -2293,6 +2360,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                 <ResourceEditor
                   action={updateResourceAction}
                   resource={editingResource}
+                  resources={resources}
                   contentTypes={activeTypes}
                   placements={activePlacements}
                   homeSections={homeSections}

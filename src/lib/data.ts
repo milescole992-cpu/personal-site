@@ -119,18 +119,18 @@ export const defaultHomeSections: HomeSection[] = [
 export const defaultContentPages: ContentPage[] = [
   {
     id: "resources",
-    title: "资源库",
+    title: "综合资源",
     slug: "resources",
     page_path: "/resources",
     description: "海外 AI 工具、教程、工作流和资源入口的总索引。",
-    hero_title: "海外 AI 资源筛选库",
+    hero_title: "综合资源",
     hero_subtitle: "CURATED AI RESOURCE LIBRARY",
     hero_description:
       "这里不是简单堆链接，而是按普通人、内容创作者、AI 工具玩家和副业创业者的真实场景，筛选可上手的 AI 工具、知识库、创作工具和工作流入口。",
     seo_title: "AI 资源库",
     seo_description:
       "收录海外 AI 工具、AI 搜索、知识库、图片视频生成、语音配音和工作流资源，适合普通人、创作者和副业创业者长期收藏。",
-    empty_state_title: "暂无资源",
+    empty_state_title: "综合资源正在整理中",
     empty_state_description:
       "管理员可以进入后台“内容发布”，选择发布位置“资源库”后，这里会自动展示。",
     primary_cta_text: "发布资源",

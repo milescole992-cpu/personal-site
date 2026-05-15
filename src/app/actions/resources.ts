@@ -23,7 +23,7 @@ function formText(formData: FormData, key: string) {
 
 function parseTags(value: string) {
   return value
-    .split(",")
+    .split(/[,，、\s]+/)
     .map((tag) => tag.trim())
     .filter(Boolean);
 }
