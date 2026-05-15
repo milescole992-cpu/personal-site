@@ -2,6 +2,7 @@ import type { Session } from "next-auth";
 import {
   getSupabaseServiceClient,
   isSupabaseConfigured,
+  type ContentPage,
   type ContentPlacement,
   type ContentPlacementRelation,
   type ContentType,
@@ -111,6 +112,129 @@ export const defaultHomeSections: HomeSection[] = [
   },
 ];
 
+export const defaultContentPages: ContentPage[] = [
+  {
+    id: "resources",
+    title: "资源库",
+    slug: "resources",
+    page_path: "/resources",
+    description: "海外 AI 工具、教程、工作流和资源入口的总索引。",
+    hero_title: "海外 AI 资源筛选库",
+    hero_subtitle: "CURATED AI RESOURCE LIBRARY",
+    hero_description:
+      "这里不是简单堆链接，而是按普通人、内容创作者、AI 工具玩家和副业创业者的真实场景，筛选可上手的 AI 工具、知识库、创作工具和工作流入口。",
+    seo_title: "AI 资源库",
+    seo_description:
+      "收录海外 AI 工具、AI 搜索、知识库、图片视频生成、语音配音和工作流资源，适合普通人、创作者和副业创业者长期收藏。",
+    empty_state_title: "暂无资源",
+    empty_state_description:
+      "管理员可以进入后台“内容发布”，选择发布位置“资源库”后，这里会自动展示。",
+    primary_cta_text: "发布资源",
+    primary_cta_href: "/admin?section=content-publish",
+    placement_slug: "resources",
+    sort_order: 10,
+    is_active: true,
+    created_at: "",
+    updated_at: "",
+  },
+  {
+    id: "tools",
+    title: "AI 工具库",
+    slug: "tools",
+    page_path: "/tools",
+    description: "从资源库中以工具视角筛选可用的海外 AI 工具。",
+    hero_title: "AI 工具库",
+    hero_subtitle: "AI TOOL LIBRARY",
+    hero_description:
+      "这是资源库的工具视角，优先筛选通用助手、AI 搜索、知识库、设计、图片、视频、音频和开发类工具。",
+    seo_title: "AI 工具库",
+    seo_description:
+      "从资源库中按工具视角筛选可用的海外 AI 工具、创作工具、搜索工具和开发资源。",
+    empty_state_title: "工具内容暂无发布",
+    empty_state_description:
+      "在后台新增内容，并选择发布位置“AI工具页”后，这里会自动展示。",
+    primary_cta_text: "进入资源库",
+    primary_cta_href: "/resources",
+    placement_slug: "tools",
+    sort_order: 20,
+    is_active: true,
+    created_at: "",
+    updated_at: "",
+  },
+  {
+    id: "workflows",
+    title: "AI 工作流",
+    slug: "workflows",
+    page_path: "/workflows",
+    description: "沉淀 AI 内容创作、资料整理、自动化发布和工程数字化的可复用工作流。",
+    hero_title: "AI 工作流",
+    hero_subtitle: "WORKFLOWS",
+    hero_description:
+      "这里展示后台发布到“工作流页”的内容，用来沉淀可复用的 AI 内容生产、资料整理、自动化和工程数字化流程。",
+    seo_title: "AI 工作流",
+    seo_description:
+      "沉淀 AI 内容创作、资料整理、自动化发布和工程数字化的可复用工作流。",
+    empty_state_title: "工作流内容正在搭建",
+    empty_state_description:
+      "在后台新增内容，并选择发布位置“工作流页”后，这里会自动展示。",
+    primary_cta_text: "发布工作流",
+    primary_cta_href: "/admin?section=content-publish",
+    placement_slug: "workflows",
+    sort_order: 30,
+    is_active: true,
+    created_at: "",
+    updated_at: "",
+  },
+  {
+    id: "tutorials",
+    title: "AI 教程",
+    slug: "tutorials",
+    page_path: "/tutorials",
+    description: "AI 工具教程、TikTok AI 运营、工程 AI 应用和产品化实验的内容入口。",
+    hero_title: "AI 教程",
+    hero_subtitle: "TUTORIALS",
+    hero_description:
+      "这里展示后台发布到“教程页”的内容，后续可扩展为文章、视频、附件和工作流步骤混合的 CMS 内容页。",
+    seo_title: "AI 教程",
+    seo_description:
+      "AI 工具教程、TikTok AI 运营、工程 AI 应用和产品化实验的内容入口。",
+    empty_state_title: "教程内容正在搭建",
+    empty_state_description:
+      "在后台新增内容，并选择发布位置“教程页”后，这里会自动展示。",
+    primary_cta_text: "发布教程",
+    primary_cta_href: "/admin?section=content-publish",
+    placement_slug: "tutorials",
+    sort_order: 40,
+    is_active: true,
+    created_at: "",
+    updated_at: "",
+  },
+  {
+    id: "roadmap",
+    title: "AI 新手路线",
+    slug: "roadmap",
+    page_path: "/roadmap",
+    description: "面向 AI 新手、TikTok AI 运营、工程 AI 应用和未来 SaaS 实验的学习路线入口。",
+    hero_title: "AI 新手路线",
+    hero_subtitle: "ROADMAP",
+    hero_description:
+      "这个页面展示后台发布到“新手路线页”的内容，用来把 AI 学习和应用路径拆成可执行阶段。",
+    seo_title: "AI 新手路线",
+    seo_description:
+      "面向 AI 新手、TikTok AI 运营、工程 AI 应用和未来 SaaS 实验的学习路线入口。",
+    empty_state_title: "路线内容暂无发布",
+    empty_state_description:
+      "在后台新增内容，并选择发布位置“新手路线页”后，这里会自动展示。",
+    primary_cta_text: "发布路线内容",
+    primary_cta_href: "/admin?section=content-publish",
+    placement_slug: "roadmap",
+    sort_order: 50,
+    is_active: true,
+    created_at: "",
+    updated_at: "",
+  },
+];
+
 export async function getSiteSettings() {
   const supabase = getSupabaseServiceClient();
 
@@ -156,6 +280,41 @@ export async function getHomeSections(includeInactive = false) {
   }
 
   return data ?? [];
+}
+
+export async function getContentPages(includeInactive = false) {
+  const supabase = getSupabaseServiceClient();
+
+  if (!supabase) {
+    return defaultContentPages;
+  }
+
+  let query = supabase
+    .from("content_pages")
+    .select("*")
+    .order("sort_order", { ascending: true });
+
+  if (!includeInactive) {
+    query = query.eq("is_active", true);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error("Failed to load content pages", error.message);
+    return defaultContentPages.filter((page) => includeInactive || page.is_active);
+  }
+
+  return data?.length ? data : defaultContentPages;
+}
+
+export async function getContentPageBySlug(slug: string) {
+  const pages = await getContentPages(true);
+  return (
+    pages.find((page) => page.slug === slug) ??
+    defaultContentPages.find((page) => page.slug === slug) ??
+    defaultContentPages[0]
+  );
 }
 
 export async function getContentTypes(includeInactive = false) {
@@ -600,6 +759,7 @@ export async function getAdminData() {
       downloads: [] as Download[],
       settings: defaultSiteSettings,
       homeSections: [] as HomeSection[],
+      contentPages: [] as ContentPage[],
       contentTypes: [] as ContentType[],
       contentPlacements: [] as ContentPlacement[],
       placementRelations: [] as ContentPlacementRelation[],
@@ -612,6 +772,7 @@ export async function getAdminData() {
     { data: downloads },
     { data: settings },
     { data: homeSections },
+    { data: contentPages, error: contentPagesError },
     { data: contentTypes },
     { data: contentPlacements },
     { data: placementRelations },
@@ -627,6 +788,9 @@ export async function getAdminData() {
     }),
     supabase.from("site_settings").select("*").limit(1).maybeSingle(),
     supabase.from("home_sections").select("*").order("sort_order", {
+      ascending: true,
+    }),
+    supabase.from("content_pages").select("*").order("sort_order", {
       ascending: true,
     }),
     supabase.from("content_types").select("*").order("sort_order", {
@@ -648,6 +812,7 @@ export async function getAdminData() {
     downloads: downloads ?? [],
     settings: settings ?? defaultSiteSettings,
     homeSections: homeSections ?? [],
+    contentPages: contentPagesError ? defaultContentPages : (contentPages ?? []),
     contentTypes: contentTypes ?? [],
     contentPlacements: contentPlacements ?? [],
     placementRelations: placementRelations ?? [],

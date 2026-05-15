@@ -178,6 +178,26 @@ export async function updateHomeSectionAction(formData: FormData) {
   adminRedirect("home-section-updated", "homepage");
 }
 
+export async function deleteHomeSectionAction(formData: FormData) {
+  await requireAdmin();
+  const supabase = getSupabaseServiceClient();
+  const id = formText(formData, "id");
+
+  if (!supabase || !id) {
+    adminRedirect("home-section-delete-failed", "homepage");
+  }
+
+  const { error } = await supabase.from("home_sections").delete().eq("id", id);
+
+  if (error) {
+    console.error("Failed to delete home section", error.message);
+    adminRedirect("home-section-delete-failed", "homepage");
+  }
+
+  revalidateCmsPaths();
+  adminRedirect("home-section-deleted", "homepage");
+}
+
 export async function createContentTypeAction(formData: FormData) {
   await requireAdmin();
   const supabase = getSupabaseServiceClient();
@@ -346,4 +366,98 @@ export async function deletePlacementAction(formData: FormData) {
 
   revalidateCmsPaths();
   adminRedirect("placement-deleted", "placements");
+}
+
+function contentPagePayload(formData: FormData) {
+  return {
+    title: formText(formData, "title"),
+    slug: formText(formData, "slug"),
+    page_path: formText(formData, "page_path"),
+    description: formText(formData, "description") || null,
+    hero_title: formText(formData, "hero_title"),
+    hero_subtitle: formText(formData, "hero_subtitle") || null,
+    hero_description: formText(formData, "hero_description") || null,
+    seo_title: formText(formData, "seo_title") || null,
+    seo_description: formText(formData, "seo_description") || null,
+    empty_state_title: formText(formData, "empty_state_title") || null,
+    empty_state_description: formText(formData, "empty_state_description") || null,
+    primary_cta_text: formText(formData, "primary_cta_text") || null,
+    primary_cta_href: formText(formData, "primary_cta_href") || null,
+    placement_slug: formText(formData, "placement_slug"),
+    sort_order: formNumber(formData, "sort_order"),
+    is_active: formData.get("is_active") === "on",
+  };
+}
+
+export async function createContentPageAction(formData: FormData) {
+  await requireAdmin();
+  const supabase = getSupabaseServiceClient();
+  const payload = contentPagePayload(formData);
+
+  if (
+    !supabase ||
+    !payload.title ||
+    !payload.slug ||
+    !payload.page_path ||
+    !payload.hero_title ||
+    !payload.placement_slug
+  ) {
+    adminRedirect("content-page-missing", "pages");
+  }
+
+  const { error } = await supabase.from("content_pages").insert(payload);
+
+  if (error) {
+    console.error("Failed to create content page", error.message);
+    adminRedirect("content-page-failed", "pages");
+  }
+
+  revalidateCmsPaths();
+  revalidatePath(payload.page_path);
+  adminRedirect("content-page-created", "pages");
+}
+
+export async function updateContentPageAction(formData: FormData) {
+  await requireAdmin();
+  const supabase = getSupabaseServiceClient();
+  const id = formText(formData, "id");
+  const payload = contentPagePayload(formData);
+
+  if (!supabase || !id || !payload.title || !payload.slug || !payload.page_path) {
+    adminRedirect("content-page-update-failed", "pages");
+  }
+
+  const { error } = await supabase
+    .from("content_pages")
+    .update(payload)
+    .eq("id", id);
+
+  if (error) {
+    console.error("Failed to update content page", error.message);
+    adminRedirect("content-page-update-failed", "pages");
+  }
+
+  revalidateCmsPaths();
+  revalidatePath(payload.page_path);
+  adminRedirect("content-page-updated", "pages");
+}
+
+export async function deleteContentPageAction(formData: FormData) {
+  await requireAdmin();
+  const supabase = getSupabaseServiceClient();
+  const id = formText(formData, "id");
+
+  if (!supabase || !id) {
+    adminRedirect("content-page-delete-failed", "pages");
+  }
+
+  const { error } = await supabase.from("content_pages").delete().eq("id", id);
+
+  if (error) {
+    console.error("Failed to delete content page", error.message);
+    adminRedirect("content-page-delete-failed", "pages");
+  }
+
+  revalidateCmsPaths();
+  adminRedirect("content-page-deleted", "pages");
 }

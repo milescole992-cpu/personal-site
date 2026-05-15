@@ -19,10 +19,14 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import {
   createContentTypeAction,
+  createContentPageAction,
   createHomeSectionAction,
   createPlacementAction,
+  deleteContentPageAction,
   deleteContentTypeAction,
+  deleteHomeSectionAction,
   deletePlacementAction,
+  updateContentPageAction,
   updateContentTypeAction,
   updateHomeSectionAction,
   updatePlacementAction,
@@ -43,6 +47,7 @@ import { getAdminData } from "@/lib/data";
 import type {
   ContentPlacement,
   ContentPlacementRelation,
+  ContentPage,
   ContentType,
   HomeSection,
   Resource,
@@ -59,6 +64,7 @@ type AdminSection =
   | "content-publish"
   | "content-management"
   | "edit-content"
+  | "pages"
   | "content-types"
   | "placements"
   | "homepage"
@@ -75,6 +81,7 @@ type AdminPageProps = {
     placement?: string;
     state?: string;
     id?: string;
+    editEntry?: string;
   }>;
 };
 
@@ -83,8 +90,19 @@ const statusMessages: Record<string, string> = {
   "settings-failed": "网站设置保存失败，请检查必填字段或数据库日志。",
   "home-section-created": "首页入口已创建，会按排序显示到首页入口区。",
   "home-section-updated": "首页入口已更新。",
+  "home-section-deleted": "首页入口已删除，前台首页不再显示。",
   "home-section-failed": "首页入口保存失败。",
   "home-section-missing": "首页入口缺少标题、说明或链接。",
+  "home-section-missing-id": "首页入口缺少 ID。",
+  "home-section-update-failed": "首页入口更新失败。",
+  "home-section-delete-failed": "首页入口删除失败。",
+  "content-page-created": "栏目页已创建，会按关联发布位置展示内容。",
+  "content-page-updated": "栏目页配置已更新。",
+  "content-page-deleted": "栏目页配置已删除。",
+  "content-page-missing": "栏目页缺少标题、slug、路径或关联发布位置。",
+  "content-page-failed": "栏目页创建失败。",
+  "content-page-update-failed": "栏目页更新失败。",
+  "content-page-delete-failed": "栏目页删除失败。",
   "content-type-created": "内容类型已创建，可在内容发布时选择。",
   "content-type-updated": "内容类型已更新。",
   "content-type-deleted": "内容类型已删除。",
@@ -134,6 +152,12 @@ const sections: Array<{
     label: "内容管理",
     description: "搜索、筛选、编辑、上下架和删除内容",
     icon: <FolderKanban size={17} />,
+  },
+  {
+    id: "pages",
+    label: "栏目页管理",
+    description: "管理 /resources、/tools、/workflows 等二级聚合页",
+    icon: <BookOpenText size={17} />,
   },
   {
     id: "content-types",
@@ -214,6 +238,27 @@ function placementNames(
 
 function typeName(types: ContentType[], id?: string | null) {
   return types.find((type) => type.id === id)?.name ?? "未选择";
+}
+
+function placementBySlug(placements: ContentPlacement[], slug?: string | null) {
+  return placements.find((placement) => placement.slug === slug) ?? null;
+}
+
+function pageByPath(pages: ContentPage[], href: string) {
+  return pages.find((page) => page.page_path === href) ?? null;
+}
+
+function placementContentCount(
+  placement: ContentPlacement | null,
+  relations: ContentPlacementRelation[],
+) {
+  if (!placement) {
+    return 0;
+  }
+
+  return relations.filter(
+    (relation) => relation.placement_id === placement.id && relation.is_active,
+  ).length;
 }
 
 function FieldHelp({
@@ -1126,12 +1171,179 @@ function PlacementsView({ placements }: { placements: ContentPlacement[] }) {
   );
 }
 
+function PagesView({
+  pages,
+  placements,
+  relations,
+}: {
+  pages: ContentPage[];
+  placements: ContentPlacement[];
+  relations: ContentPlacementRelation[];
+}) {
+  const activePlacements = placements.filter((placement) => placement.is_active);
+
+  return (
+    <CardShell className="p-6">
+      <SectionHeader
+        eyebrow="Pages"
+        title="栏目页管理"
+        description="这里管理第二层聚合页的标题、说明、SEO、空状态和关联发布位置。页面本身不存内容，内容仍由发布位置关系驱动。"
+      />
+
+      <form
+        action={createContentPageAction}
+        className="grid gap-4 rounded-lg border border-white/10 bg-white/[0.03] p-4"
+      >
+        <h3 className="text-base font-semibold text-white">新增栏目页</h3>
+        <p className="text-sm leading-6 text-slate-500">
+          适合以后新增 TikTok AI、工程 AI、SaaS 产品等二级栏目。默认栏目页可以直接在下方编辑。
+        </p>
+        <div className="grid gap-4 lg:grid-cols-4">
+          <FieldHelp label="页面名称" required description="后台列表中显示的栏目名称。" placeholder="例如：TikTok AI 运营" frontPosition="后台栏目页列表、导航说明">
+            <input name="title" required placeholder="TikTok AI 运营" className={fieldClass()} />
+          </FieldHelp>
+          <FieldHelp label="Slug" required description="栏目配置唯一标识，建议英文短横线。" placeholder="tiktok-ai" frontPosition="后台配置和 sitemap">
+            <input name="slug" required placeholder="tiktok-ai" className={fieldClass()} />
+          </FieldHelp>
+          <FieldHelp label="页面路径" required description="用户访问的前端路径。" placeholder="/tiktok-ai" frontPosition="前端第二层页面 URL">
+            <input name="page_path" required placeholder="/tiktok-ai" className={fieldClass()} />
+          </FieldHelp>
+          <FieldHelp label="关联发布位置" required description="决定该栏目页读取哪个发布位置下的内容。" placeholder="请选择发布位置" frontPosition="栏目页内容列表">
+            <select name="placement_slug" required className={fieldClass()} defaultValue="">
+              <option value="" disabled>选择发布位置</option>
+              {activePlacements.map((placement) => (
+                <option key={placement.id} value={placement.slug}>
+                  {placement.name} · {placement.page_path}
+                </option>
+              ))}
+            </select>
+          </FieldHelp>
+        </div>
+        <FieldHelp label="页面 Hero 标题" required description="显示在栏目页顶部最大标题位置。" placeholder="例如：TikTok AI 运营资料库" frontPosition="栏目页 Hero / 大标题">
+          <input name="hero_title" required placeholder="TikTok AI 运营资料库" className={fieldClass()} />
+        </FieldHelp>
+        <FieldHelp label="页面描述" description="解释该栏目收录什么内容，给管理员和前台用户一个明确预期。" placeholder="围绕短视频选题、脚本、素材、发布和复盘的 AI 工作流。" frontPosition="栏目页 Hero / 描述">
+          <textarea name="hero_description" rows={2} className={textareaClass()} />
+        </FieldHelp>
+        <input name="hero_subtitle" placeholder="TIKTOK AI OPS" className={fieldClass()} />
+        <div className="grid gap-4 lg:grid-cols-2">
+          <input name="seo_title" placeholder="SEO 标题，例如：TikTok AI 运营" className={fieldClass()} />
+          <input name="seo_description" placeholder="SEO 描述，建议 80-160 字" className={fieldClass()} />
+          <input name="empty_state_title" placeholder="空状态标题，例如：内容正在整理中" className={fieldClass()} />
+          <input name="empty_state_description" placeholder="空状态说明：管理员到哪里发布内容" className={fieldClass()} />
+          <input name="primary_cta_text" placeholder="CTA 文案，例如：进入资源库" className={fieldClass()} />
+          <input name="primary_cta_href" placeholder="CTA 链接，例如：/resources" className={fieldClass()} />
+          <input name="description" placeholder="后台简介，可选" className={fieldClass()} />
+          <input name="sort_order" type="number" defaultValue="100" className={fieldClass()} />
+        </div>
+        <label className="flex items-center gap-2 text-sm text-slate-300">
+          <input name="is_active" type="checkbox" defaultChecked className="size-4 accent-cyan-300" />
+          启用栏目页配置
+        </label>
+        <button className="w-fit rounded-md bg-cyan-300 px-4 py-2.5 text-sm font-semibold text-slate-950">
+          新增栏目页
+        </button>
+      </form>
+
+      <div className="mt-5 space-y-4">
+        {pages.map((page) => {
+          const placement = placementBySlug(placements, page.placement_slug);
+          const count = placementContentCount(placement, relations);
+
+          return (
+            <div key={page.id} className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
+              <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="font-semibold text-white">{page.title}</h3>
+                    <span className={page.is_active ? "rounded-md bg-emerald-300/8 px-2 py-1 text-xs text-emerald-100" : "rounded-md bg-slate-300/8 px-2 py-1 text-xs text-slate-400"}>
+                      {page.is_active ? "启用" : "停用"}
+                    </span>
+                    <span className="rounded-md bg-white/5 px-2 py-1 text-xs text-slate-500">
+                      {page.page_path}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-xs leading-5 text-slate-500">
+                    关联发布位置：{placement ? `${placement.name}（${placement.slug}）` : `未匹配：${page.placement_slug}`} ·
+                    当前关联内容 {count} 条
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-slate-600">
+                    前端规则：栏目页读取这个发布位置下 is_published=true 的内容；没有内容时显示你配置的空状态。
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Link href={page.page_path} className={pillClass()}>预览</Link>
+                  <CopyLinkButton href={page.page_path} className={pillClass()} />
+                </div>
+              </div>
+
+              <form action={updateContentPageAction} className="grid gap-3">
+                <input type="hidden" name="id" value={page.id} />
+                <div className="grid gap-3 lg:grid-cols-4">
+                  <input name="title" defaultValue={page.title} className={fieldClass()} />
+                  <input name="slug" defaultValue={page.slug} className={fieldClass()} />
+                  <input name="page_path" defaultValue={page.page_path} className={fieldClass()} />
+                  <select name="placement_slug" defaultValue={page.placement_slug} className={fieldClass()}>
+                    {placements.map((placementOption) => (
+                      <option key={placementOption.id} value={placementOption.slug}>
+                        {placementOption.name} · {placementOption.page_path}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="grid gap-3 lg:grid-cols-2">
+                  <input name="hero_title" defaultValue={page.hero_title} placeholder="Hero 标题" className={fieldClass()} />
+                  <input name="hero_subtitle" defaultValue={page.hero_subtitle ?? ""} placeholder="Hero 标签" className={fieldClass()} />
+                </div>
+                <textarea name="hero_description" rows={2} defaultValue={page.hero_description ?? ""} placeholder="Hero 描述" className={textareaClass()} />
+                <div className="grid gap-3 lg:grid-cols-2">
+                  <input name="seo_title" defaultValue={page.seo_title ?? ""} placeholder="SEO 标题" className={fieldClass()} />
+                  <input name="seo_description" defaultValue={page.seo_description ?? ""} placeholder="SEO 描述" className={fieldClass()} />
+                  <input name="empty_state_title" defaultValue={page.empty_state_title ?? ""} placeholder="空状态标题" className={fieldClass()} />
+                  <input name="empty_state_description" defaultValue={page.empty_state_description ?? ""} placeholder="空状态描述" className={fieldClass()} />
+                  <input name="primary_cta_text" defaultValue={page.primary_cta_text ?? ""} placeholder="CTA 文案" className={fieldClass()} />
+                  <input name="primary_cta_href" defaultValue={page.primary_cta_href ?? ""} placeholder="CTA 链接" className={fieldClass()} />
+                  <input name="description" defaultValue={page.description ?? ""} placeholder="后台简介" className={fieldClass()} />
+                  <input name="sort_order" type="number" defaultValue={page.sort_order} className={fieldClass()} />
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <label className="flex items-center gap-2 text-sm text-slate-300">
+                    <input name="is_active" type="checkbox" defaultChecked={page.is_active} className="size-4 accent-cyan-300" />
+                    启用
+                  </label>
+                  <button className={pillClass(true)}>保存栏目页</button>
+                </div>
+              </form>
+              <form action={deleteContentPageAction} className="mt-2">
+                <input type="hidden" name="id" value={page.id} />
+                <ConfirmSubmitButton
+                  message={`确认删除栏目页配置“${page.title}”？这不会删除内容，但该栏目配置会从后台移除。`}
+                  className="rounded-md border border-pink-300/30 bg-pink-300/8 px-3 py-2 text-xs font-semibold text-pink-100"
+                >
+                  删除栏目页配置
+                </ConfirmSubmitButton>
+              </form>
+            </div>
+          );
+        })}
+        {pages.length === 0 ? (
+          <EmptyState title="暂无栏目页配置" description="执行 supabase/content_pages.sql 后会写入默认二级栏目页，也可以在这里新增。" />
+        ) : null}
+      </div>
+    </CardShell>
+  );
+}
+
 function HomepageView({
   settings,
   homeSections,
+  contentPages,
+  editingSectionId,
 }: {
   settings: SiteSettings;
   homeSections: HomeSection[];
+  contentPages: ContentPage[];
+  editingSectionId?: string;
 }) {
   return (
     <CardShell className="p-6">
@@ -1178,61 +1390,161 @@ function HomepageView({
         <input type="hidden" name="homepage_featured_description" value={settings.homepage_featured_description} />
         <button className="w-fit rounded-md bg-cyan-300 px-4 py-2.5 text-sm font-semibold text-slate-950">保存首页文案</button>
       </form>
-      <HomeSectionsEditor homeSections={homeSections} />
+      <HomeSectionsEditor
+        homeSections={homeSections}
+        contentPages={contentPages}
+        editingSectionId={editingSectionId}
+      />
     </CardShell>
   );
 }
 
-function HomeSectionsEditor({ homeSections }: { homeSections: HomeSection[] }) {
+function HomeSectionsEditor({
+  homeSections,
+  contentPages,
+  editingSectionId,
+}: {
+  homeSections: HomeSection[];
+  contentPages: ContentPage[];
+  editingSectionId?: string;
+}) {
+  const editingSection =
+    homeSections.find((section) => section.id === editingSectionId) ?? null;
+
   return (
     <div className="mt-6">
       <h3 className="text-lg font-semibold text-white">首页入口卡片</h3>
       <p className="mt-1 text-sm text-slate-500">
-        入口卡片显示在首页 Hero 下方。每个入口必须有明确跳转，不能留空或使用 #。
+        入口卡片显示在首页 Hero 下方。每个入口都应跳到一个明确的二级栏目页，后台会提示是否匹配。
       </p>
-      <form action={createHomeSectionAction} className="mt-4 grid gap-4 rounded-lg border border-white/10 bg-white/[0.03] p-4">
+      <form
+        action={editingSection ? updateHomeSectionAction : createHomeSectionAction}
+        className="mt-4 grid gap-4 rounded-lg border border-white/10 bg-white/[0.03] p-4"
+      >
+        {editingSection ? <input type="hidden" name="id" value={editingSection.id} /> : null}
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h4 className="font-semibold text-white">
+              {editingSection ? `编辑入口：${editingSection.title}` : "新增首页入口"}
+            </h4>
+            <p className="mt-1 text-xs leading-5 text-slate-500">
+              保存后首页入口区立即按排序读取；隐藏后前台不显示，后台仍保留。
+            </p>
+          </div>
+          {editingSection ? (
+            <Link href="/admin?section=homepage" className={pillClass()}>
+              取消编辑
+            </Link>
+          ) : null}
+        </div>
         <div className="grid gap-4 lg:grid-cols-4">
-          <input name="title" required placeholder="入口标题，例如：AI 工具库" className={fieldClass()} />
-          <input name="href" required placeholder="/tools" className={fieldClass()} />
-          <input name="badge" placeholder="Tool Library" className={fieldClass()} />
-          <input name="sort_order" type="number" defaultValue="100" className={fieldClass()} />
+          <FieldHelp label="入口标题" required description="显示在首页入口卡片顶部，告诉用户要进入哪个栏目。" placeholder="例如：AI 工具库" frontPosition="首页 Hero 下方入口卡片 / 标题">
+            <input name="title" required defaultValue={editingSection?.title ?? ""} placeholder="AI 工具库" className={fieldClass()} />
+          </FieldHelp>
+          <FieldHelp label="跳转链接" required description="点击入口后进入的第二层页面路径。" placeholder="/tools" frontPosition="首页入口卡片 / 点击目标">
+            <input name="href" required defaultValue={editingSection?.href ?? ""} placeholder="/tools" className={fieldClass()} />
+          </FieldHelp>
+          <FieldHelp label="Badge" description="显示在入口卡片上的短标签。" placeholder="Tool Library" frontPosition="首页入口卡片 / 小标签">
+            <input name="badge" defaultValue={editingSection?.badge ?? ""} placeholder="Tool Library" className={fieldClass()} />
+          </FieldHelp>
+          <FieldHelp label="排序" description="数字越小越靠前。" placeholder="10" frontPosition="首页入口卡片排序">
+            <input name="sort_order" type="number" defaultValue={editingSection?.sort_order ?? 100} className={fieldClass()} />
+          </FieldHelp>
         </div>
         <div className="grid gap-4 lg:grid-cols-2">
-          <input name="icon" placeholder="Wrench" className={fieldClass()} />
-          <input name="section_type" defaultValue="homepage_entry" placeholder="homepage_entry" className={fieldClass()} />
+          <FieldHelp label="图标" description="暂存 lucide 图标名称，前台按可识别图标渲染。" placeholder="Wrench" frontPosition="首页入口卡片 / 图标">
+            <input name="icon" defaultValue={editingSection?.icon ?? ""} placeholder="Wrench" className={fieldClass()} />
+          </FieldHelp>
+          <FieldHelp label="所属区域" description="决定入口属于首页哪个区块；第一阶段主要使用 homepage_entry。" placeholder="homepage_entry" frontPosition="首页入口卡片区">
+            <input name="section_type" defaultValue={editingSection?.section_type ?? "homepage_entry"} placeholder="homepage_entry" className={fieldClass()} />
+          </FieldHelp>
         </div>
-        <textarea name="description" required rows={2} placeholder="入口说明：这个入口帮助用户做什么？" className={textareaClass()} />
+        <FieldHelp label="入口说明" required description="显示在入口卡片正文，用一句话说明这个栏目帮用户解决什么。" placeholder="按场景筛选海外 AI 工具，关注可用性、门槛、价格与替代方案。" frontPosition="首页入口卡片 / 描述">
+          <textarea name="description" required rows={2} defaultValue={editingSection?.description ?? ""} placeholder="入口说明：这个入口帮助用户做什么？" className={textareaClass()} />
+        </FieldHelp>
+        <input name="image_url" defaultValue={editingSection?.image_url ?? ""} placeholder="图片 URL，第二阶段接上传" className={fieldClass()} />
         <label className="flex items-center gap-2 text-sm text-slate-300">
-          <input name="is_active" type="checkbox" defaultChecked className="size-4 accent-cyan-300" />
+          <input name="is_active" type="checkbox" defaultChecked={editingSection?.is_active ?? true} className="size-4 accent-cyan-300" />
           显示在首页
         </label>
-        <button className="w-fit rounded-md bg-cyan-300 px-4 py-2.5 text-sm font-semibold text-slate-950">新增入口</button>
+        <button className="w-fit rounded-md bg-cyan-300 px-4 py-2.5 text-sm font-semibold text-slate-950">
+          {editingSection ? "保存修改" : "新增入口"}
+        </button>
       </form>
       <div className="mt-4 space-y-3">
-        {homeSections.map((section) => (
-          <form key={section.id} action={updateHomeSectionAction} className="grid gap-3 rounded-lg border border-white/10 bg-white/[0.03] p-4">
-            <input type="hidden" name="id" value={section.id} />
-            <div className="grid gap-3 lg:grid-cols-4">
-              <input name="title" defaultValue={section.title} className={fieldClass()} />
-              <input name="href" defaultValue={section.href} className={fieldClass()} />
-              <input name="badge" defaultValue={section.badge ?? ""} className={fieldClass()} />
-              <input name="sort_order" type="number" defaultValue={section.sort_order} className={fieldClass()} />
+        {homeSections.map((section) => {
+          const matchedPage = pageByPath(contentPages, section.href);
+
+          return (
+            <div key={section.id} className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h4 className="font-semibold text-white">{section.title}</h4>
+                    <span className={section.is_active ? "rounded-md bg-emerald-300/8 px-2 py-1 text-xs text-emerald-100" : "rounded-md bg-slate-300/8 px-2 py-1 text-xs text-slate-400"}>
+                      {section.is_active ? "显示" : "隐藏"}
+                    </span>
+                    <span className="rounded-md bg-white/5 px-2 py-1 text-xs text-slate-500">
+                      排序 {section.sort_order}
+                    </span>
+                    {section.badge ? (
+                      <span className="rounded-md bg-cyan-300/8 px-2 py-1 text-xs text-cyan-100">
+                        {section.badge}
+                      </span>
+                    ) : null}
+                  </div>
+                  <p className="mt-2 text-sm leading-6 text-slate-400">{section.description}</p>
+                  <div className="mt-3 grid gap-1 text-xs leading-5 text-slate-500">
+                    <span>前端位置：首页入口卡片区 / {section.section_type}</span>
+                    <span>跳转目标：{section.href}</span>
+                    <span>
+                      关联栏目：
+                      {matchedPage
+                        ? `${matchedPage.title}（${matchedPage.page_path}）`
+                        : "未匹配到已配置栏目页，请确认链接是否正确"}
+                    </span>
+                    <span>图标：{section.icon || "未设置"} · 图片：{section.image_url || "未设置"}</span>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Link href={`/admin?section=homepage&editEntry=${section.id}`} className={pillClass()}>
+                    编辑
+                  </Link>
+                  <Link href={section.href} className={pillClass()}>
+                    预览
+                  </Link>
+                  <CopyLinkButton href={section.href} className={pillClass()} />
+                </div>
+              </div>
+              <div className="mt-4 flex flex-wrap gap-2 border-t border-white/8 pt-4">
+                <form action={updateHomeSectionAction}>
+                  <input type="hidden" name="id" value={section.id} />
+                  <input type="hidden" name="title" value={section.title} />
+                  <input type="hidden" name="description" value={section.description} />
+                  <input type="hidden" name="href" value={section.href} />
+                  <input type="hidden" name="icon" value={section.icon ?? ""} />
+                  <input type="hidden" name="badge" value={section.badge ?? ""} />
+                  <input type="hidden" name="sort_order" value={section.sort_order} />
+                  <input type="hidden" name="section_type" value={section.section_type} />
+                  <input type="hidden" name="image_url" value={section.image_url ?? ""} />
+                  {section.is_active ? null : <input type="hidden" name="is_active" value="on" />}
+                  <button className={pillClass(true)}>
+                    {section.is_active ? "隐藏入口" : "显示入口"}
+                  </button>
+                </form>
+                <form action={deleteHomeSectionAction}>
+                  <input type="hidden" name="id" value={section.id} />
+                  <ConfirmSubmitButton
+                    message={`确认删除首页入口“${section.title}”？删除后首页入口区不会再显示。`}
+                    className="rounded-md border border-pink-300/30 bg-pink-300/8 px-3 py-2 text-xs font-semibold text-pink-100"
+                  >
+                    删除入口
+                  </ConfirmSubmitButton>
+                </form>
+              </div>
             </div>
-            <div className="grid gap-3 lg:grid-cols-3">
-              <input name="icon" defaultValue={section.icon ?? ""} className={fieldClass()} />
-              <input name="section_type" defaultValue={section.section_type} className={fieldClass()} />
-              <input name="image_url" defaultValue={section.image_url ?? ""} placeholder="图片 URL，第二阶段接上传" className={fieldClass()} />
-            </div>
-            <textarea name="description" rows={2} defaultValue={section.description} className={textareaClass()} />
-            <div className="flex items-center justify-between gap-3">
-              <label className="flex items-center gap-2 text-sm text-slate-300">
-                <input name="is_active" type="checkbox" defaultChecked={section.is_active} className="size-4 accent-cyan-300" />
-                首页显示
-              </label>
-              <button className={pillClass(true)}>保存入口</button>
-            </div>
-          </form>
-        ))}
+          );
+        })}
         {homeSections.length === 0 ? (
           <EmptyState title="暂无首页入口" description="新增入口后，首页核心入口区会自动展示。" />
         ) : null}
@@ -1365,6 +1677,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
     downloads,
     settings,
     homeSections,
+    contentPages,
     contentTypes,
     contentPlacements,
     placementRelations,
@@ -1457,6 +1770,14 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
             />
           ) : null}
 
+          {activeSection === "pages" ? (
+            <PagesView
+              pages={contentPages}
+              placements={contentPlacements}
+              relations={placementRelations}
+            />
+          ) : null}
+
           {activeSection === "edit-content" ? (
             <CardShell className="p-6">
               <SectionHeader
@@ -1481,7 +1802,14 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
 
           {activeSection === "content-types" ? <ContentTypesView contentTypes={contentTypes} /> : null}
           {activeSection === "placements" ? <PlacementsView placements={contentPlacements} /> : null}
-          {activeSection === "homepage" ? <HomepageView settings={settings} homeSections={homeSections} /> : null}
+          {activeSection === "homepage" ? (
+            <HomepageView
+              settings={settings}
+              homeSections={homeSections}
+              contentPages={contentPages}
+              editingSectionId={params?.editEntry}
+            />
+          ) : null}
           {activeSection === "taxonomy" ? <TaxonomyView resources={resources} /> : null}
           {activeSection === "settings" ? <SettingsView settings={settings} /> : null}
           {activeSection === "user-content" ? <UserContentView /> : null}

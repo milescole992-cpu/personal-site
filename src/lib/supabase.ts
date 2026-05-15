@@ -80,6 +80,28 @@ export type ContentPlacementRelation = {
   updated_at: string;
 };
 
+export type ContentPage = {
+  id: string;
+  title: string;
+  slug: string;
+  page_path: string;
+  description: string | null;
+  hero_title: string;
+  hero_subtitle: string | null;
+  hero_description: string | null;
+  seo_title: string | null;
+  seo_description: string | null;
+  empty_state_title: string | null;
+  empty_state_description: string | null;
+  primary_cta_text: string | null;
+  primary_cta_href: string | null;
+  placement_slug: string;
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
 export type SiteSettings = {
   id: string;
   hero_title: string;
@@ -183,6 +205,21 @@ type Database = {
           placement_id: string;
         };
         Update: Partial<ContentPlacementRelation>;
+        Relationships: [];
+      };
+      content_pages: {
+        Row: ContentPage;
+        Insert: Omit<
+          Partial<ContentPage>,
+          "id" | "created_at" | "updated_at"
+        > & {
+          title: string;
+          slug: string;
+          page_path: string;
+          hero_title: string;
+          placement_slug: string;
+        };
+        Update: Partial<ContentPage>;
         Relationships: [];
       };
       site_settings: {
