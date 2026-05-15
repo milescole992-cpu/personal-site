@@ -41,6 +41,8 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export const dynamic = "force-dynamic";
 
+const SIDE_PREVIEW_LIMIT = 7;
+
 function previewMoreHref(
   placementSlug: string,
   contentPages: Awaited<ReturnType<typeof getContentPages>>,
@@ -69,7 +71,7 @@ export default async function Home() {
   ]);
 
   const featuredPreview = featuredResources.slice(0, HOME_PREVIEW_LIMIT);
-  const hotPreview = hotResources.slice(0, HOME_PREVIEW_LIMIT);
+  const hotPreview = hotResources.slice(0, SIDE_PREVIEW_LIMIT);
   const latestPreview = latestResources.slice(0, HOME_PREVIEW_LIMIT);
 
   const featuredMoreHref = previewMoreHref(
@@ -128,6 +130,7 @@ export default async function Home() {
                       resources={hotPreview}
                       moreHref={hotMoreHref}
                       variant="list"
+                      maxItems={SIDE_PREVIEW_LIMIT}
                       eyebrowClassName="text-pink-300/70"
                     />
                   ) : null}

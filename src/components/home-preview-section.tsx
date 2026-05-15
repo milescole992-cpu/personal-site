@@ -1,11 +1,8 @@
 import Link from "next/link";
 import type { Resource } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
-import { HOME_PREVIEW_LIMIT } from "@/lib/data";
 import { HomeResourceLinkList } from "./home-resource-link-list";
 import { HomeResourcePreviewCard } from "./home-resource-preview-card";
-
-const PREVIEW_MAX = HOME_PREVIEW_LIMIT;
 
 type HomePreviewSectionProps = {
   eyebrow: string;
@@ -16,6 +13,7 @@ type HomePreviewSectionProps = {
   variant: "card" | "list";
   eyebrowClassName?: string;
   className?: string;
+  maxItems?: number;
 };
 
 export function HomePreviewSection({
@@ -27,8 +25,9 @@ export function HomePreviewSection({
   variant,
   eyebrowClassName = "text-cyan-300/70",
   className,
+  maxItems,
 }: HomePreviewSectionProps) {
-  const visibleItems = resources.slice(0, PREVIEW_MAX);
+  const visibleItems = maxItems ? resources.slice(0, maxItems) : resources;
 
   if (visibleItems.length === 0) {
     return null;
@@ -70,7 +69,7 @@ export function HomePreviewSection({
           ))}
         </div>
       ) : (
-        <HomeResourceLinkList resources={visibleItems} maxItems={PREVIEW_MAX} />
+        <HomeResourceLinkList resources={visibleItems} maxItems={maxItems} />
       )}
     </section>
   );
