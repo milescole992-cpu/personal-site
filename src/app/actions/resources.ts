@@ -43,6 +43,10 @@ function revalidateContentPaths() {
   revalidatePath("/sitemap.xml");
 }
 
+function adminRedirect(status: string, section = "content-management"): never {
+  redirect(`/admin?section=${section}&status=${status}`);
+}
+
 function getPlacementIds(formData: FormData) {
   return formData
     .getAll("placement_ids")
@@ -130,14 +134,14 @@ export async function createResourceAction(formData: FormData) {
   const supabase = getSupabaseServiceClient();
 
   if (!supabase) {
-    redirect("/admin?status=supabase-not-configured");
+    adminRedirect("supabase-not-configured", "content-publish");
   }
 
   const slug = formText(formData, "slug");
   const payload = resourcePayload(formData);
 
   if (!payload.title || !payload.description) {
-    redirect("/admin?status=missing-resource-fields#content-publish");
+    adminRedirect("missing-resource-fields", "content-publish");
   }
 
   const resourceInput = {
@@ -154,13 +158,16 @@ export async function createResourceAction(formData: FormData) {
 
   if (error) {
     console.error("Failed to create resource", error.message);
-    redirect("/admin?status=create-resource-failed#content-publish");
+    adminRedirect("create-resource-failed", "content-publish");
   }
 
   await syncResourcePlacements(data.id, getPlacementIds(formData), payload.sort_order);
 
   revalidateContentPaths();
-  redirect("/admin?status=resource-created#content-management");
+  adminRedirect(
+    payload.is_published ? "resource-published" : "resource-draft-saved",
+    "content-management",
+  );
 }
 
 export async function updateResourceAction(formData: FormData) {
@@ -171,7 +178,7 @@ export async function updateResourceAction(formData: FormData) {
   const payload = resourcePayload(formData);
 
   if (!supabase || !id) {
-    redirect("/admin?status=resource-update-failed#content-management");
+    adminRedirect("resource-update-failed");
   }
 
   const { error } = await supabase
@@ -184,12 +191,12 @@ export async function updateResourceAction(formData: FormData) {
 
   if (error) {
     console.error("Failed to update resource", error.message);
-    redirect("/admin?status=resource-update-failed#content-management");
+    adminRedirect("resource-update-failed");
   }
 
   await syncResourcePlacements(id, getPlacementIds(formData), payload.sort_order);
   revalidateContentPaths();
-  redirect("/admin?status=resource-updated#content-management");
+  adminRedirect("resource-updated", "content-management");
 }
 
 export async function deleteResourceAction(formData: FormData) {
@@ -198,18 +205,65 @@ export async function deleteResourceAction(formData: FormData) {
   const id = formText(formData, "id");
 
   if (!supabase || !id) {
-    redirect("/admin?status=resource-delete-failed#content-management");
+    adminRedirect("resource-delete-failed");
   }
 
   const { error } = await supabase.from("resources").delete().eq("id", id);
 
   if (error) {
     console.error("Failed to delete resource", error.message);
-    redirect("/admin?status=resource-delete-failed#content-management");
+    adminRedirect("resource-delete-failed");
   }
 
   revalidateContentPaths();
-  redirect("/admin?status=resource-deleted#content-management");
+  adminRedirect("resource-deleted", "content-management");
+}
+
+export async function quickUpdateResourceAction(formData: FormData) {
+  await requireAdmin();
+  const supabase = getSupabaseServiceClient();
+  const id = formText(formData, "id");
+  const operation = formText(formData, "operation");
+
+  if (!supabase || !id) {
+    adminRedirect("resource-update-failed");
+  }
+
+  const payload =
+    operation === "publish"
+      ? { is_published: true, published_at: new Date().toISOString() }
+      : operation === "unpublish"
+        ? { is_published: false }
+        : operation === "feature"
+          ? { is_featured: true }
+          : operation === "unfeature"
+            ? { is_featured: false }
+            : operation === "hot"
+              ? { is_hot: true }
+              : operation === "unhot"
+                ? { is_hot: false }
+                : null;
+
+  if (!payload) {
+    adminRedirect("resource-update-failed");
+  }
+
+  const { error } = await supabase.from("resources").update(payload).eq("id", id);
+
+  if (error) {
+    console.error("Failed to quick update resource", error.message);
+    adminRedirect("resource-update-failed");
+  }
+
+  revalidateContentPaths();
+  const status =
+    operation === "publish"
+      ? "resource-published"
+      : operation === "unpublish"
+        ? "resource-unpublished"
+        : "resource-updated";
+
+  adminRedirect(status, "content-management");
 }
 
 export async function favoriteResourceAction(resourceId: string) {

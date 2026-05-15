@@ -40,12 +40,16 @@ function revalidateCmsPaths() {
   revalidatePath("/sitemap.xml");
 }
 
+function adminRedirect(status: string, section: string): never {
+  redirect(`/admin?section=${section}&status=${status}`);
+}
+
 export async function updateSiteSettingsAction(formData: FormData) {
   await requireAdmin();
   const supabase = getSupabaseServiceClient();
 
   if (!supabase) {
-    redirect("/admin?status=supabase-not-configured");
+    adminRedirect("supabase-not-configured", "homepage");
   }
 
   const payload = {
@@ -92,11 +96,11 @@ export async function updateSiteSettingsAction(formData: FormData) {
 
   if (error) {
     console.error("Failed to update site settings", error.message);
-    redirect("/admin?status=settings-failed");
+    adminRedirect("settings-failed", "homepage");
   }
 
   revalidateCmsPaths();
-  redirect("/admin?status=settings-saved#site-settings");
+  adminRedirect("settings-saved", "homepage");
 }
 
 export async function createHomeSectionAction(formData: FormData) {
@@ -104,7 +108,7 @@ export async function createHomeSectionAction(formData: FormData) {
   const supabase = getSupabaseServiceClient();
 
   if (!supabase) {
-    redirect("/admin?status=supabase-not-configured");
+    adminRedirect("supabase-not-configured", "homepage");
   }
 
   const title = formText(formData, "title");
@@ -112,7 +116,7 @@ export async function createHomeSectionAction(formData: FormData) {
   const href = formText(formData, "href");
 
   if (!title || !description || !href) {
-    redirect("/admin?status=home-section-missing#home-sections");
+    adminRedirect("home-section-missing", "homepage");
   }
 
   const { error } = await supabase.from("home_sections").insert({
@@ -129,11 +133,11 @@ export async function createHomeSectionAction(formData: FormData) {
 
   if (error) {
     console.error("Failed to create home section", error.message);
-    redirect("/admin?status=home-section-failed#home-sections");
+    adminRedirect("home-section-failed", "homepage");
   }
 
   revalidateCmsPaths();
-  redirect("/admin?status=home-section-created#home-sections");
+  adminRedirect("home-section-created", "homepage");
 }
 
 export async function updateHomeSectionAction(formData: FormData) {
@@ -141,13 +145,13 @@ export async function updateHomeSectionAction(formData: FormData) {
   const supabase = getSupabaseServiceClient();
 
   if (!supabase) {
-    redirect("/admin?status=supabase-not-configured");
+    adminRedirect("supabase-not-configured", "homepage");
   }
 
   const id = formText(formData, "id");
 
   if (!id) {
-    redirect("/admin?status=home-section-missing-id#home-sections");
+    adminRedirect("home-section-missing-id", "homepage");
   }
 
   const { error } = await supabase
@@ -167,11 +171,11 @@ export async function updateHomeSectionAction(formData: FormData) {
 
   if (error) {
     console.error("Failed to update home section", error.message);
-    redirect("/admin?status=home-section-update-failed#home-sections");
+    adminRedirect("home-section-update-failed", "homepage");
   }
 
   revalidateCmsPaths();
-  redirect("/admin?status=home-section-updated#home-sections");
+  adminRedirect("home-section-updated", "homepage");
 }
 
 export async function createContentTypeAction(formData: FormData) {
@@ -179,14 +183,14 @@ export async function createContentTypeAction(formData: FormData) {
   const supabase = getSupabaseServiceClient();
 
   if (!supabase) {
-    redirect("/admin?status=supabase-not-configured#content-types");
+    adminRedirect("supabase-not-configured", "content-types");
   }
 
   const name = formText(formData, "name");
   const slug = formText(formData, "slug");
 
   if (!name || !slug) {
-    redirect("/admin?status=content-type-missing#content-types");
+    adminRedirect("content-type-missing", "content-types");
   }
 
   const { error } = await supabase.from("content_types").insert({
@@ -200,11 +204,11 @@ export async function createContentTypeAction(formData: FormData) {
 
   if (error) {
     console.error("Failed to create content type", error.message);
-    redirect("/admin?status=content-type-failed#content-types");
+    adminRedirect("content-type-failed", "content-types");
   }
 
   revalidateCmsPaths();
-  redirect("/admin?status=content-type-created#content-types");
+  adminRedirect("content-type-created", "content-types");
 }
 
 export async function updateContentTypeAction(formData: FormData) {
@@ -213,7 +217,7 @@ export async function updateContentTypeAction(formData: FormData) {
   const id = formText(formData, "id");
 
   if (!supabase || !id) {
-    redirect("/admin?status=content-type-update-failed#content-types");
+    adminRedirect("content-type-update-failed", "content-types");
   }
 
   const { error } = await supabase
@@ -230,11 +234,11 @@ export async function updateContentTypeAction(formData: FormData) {
 
   if (error) {
     console.error("Failed to update content type", error.message);
-    redirect("/admin?status=content-type-update-failed#content-types");
+    adminRedirect("content-type-update-failed", "content-types");
   }
 
   revalidateCmsPaths();
-  redirect("/admin?status=content-type-updated#content-types");
+  adminRedirect("content-type-updated", "content-types");
 }
 
 export async function deleteContentTypeAction(formData: FormData) {
@@ -243,18 +247,18 @@ export async function deleteContentTypeAction(formData: FormData) {
   const id = formText(formData, "id");
 
   if (!supabase || !id) {
-    redirect("/admin?status=content-type-delete-failed#content-types");
+    adminRedirect("content-type-delete-failed", "content-types");
   }
 
   const { error } = await supabase.from("content_types").delete().eq("id", id);
 
   if (error) {
     console.error("Failed to delete content type", error.message);
-    redirect("/admin?status=content-type-delete-failed#content-types");
+    adminRedirect("content-type-delete-failed", "content-types");
   }
 
   revalidateCmsPaths();
-  redirect("/admin?status=content-type-deleted#content-types");
+  adminRedirect("content-type-deleted", "content-types");
 }
 
 export async function createPlacementAction(formData: FormData) {
@@ -262,7 +266,7 @@ export async function createPlacementAction(formData: FormData) {
   const supabase = getSupabaseServiceClient();
 
   if (!supabase) {
-    redirect("/admin?status=supabase-not-configured#placements");
+    adminRedirect("supabase-not-configured", "placements");
   }
 
   const name = formText(formData, "name");
@@ -271,7 +275,7 @@ export async function createPlacementAction(formData: FormData) {
   const placementKey = formText(formData, "placement_key");
 
   if (!name || !slug || !pagePath || !placementKey) {
-    redirect("/admin?status=placement-missing#placements");
+    adminRedirect("placement-missing", "placements");
   }
 
   const { error } = await supabase.from("content_placements").insert({
@@ -286,11 +290,11 @@ export async function createPlacementAction(formData: FormData) {
 
   if (error) {
     console.error("Failed to create placement", error.message);
-    redirect("/admin?status=placement-failed#placements");
+    adminRedirect("placement-failed", "placements");
   }
 
   revalidateCmsPaths();
-  redirect("/admin?status=placement-created#placements");
+  adminRedirect("placement-created", "placements");
 }
 
 export async function updatePlacementAction(formData: FormData) {
@@ -299,7 +303,7 @@ export async function updatePlacementAction(formData: FormData) {
   const id = formText(formData, "id");
 
   if (!supabase || !id) {
-    redirect("/admin?status=placement-update-failed#placements");
+    adminRedirect("placement-update-failed", "placements");
   }
 
   const { error } = await supabase
@@ -317,11 +321,11 @@ export async function updatePlacementAction(formData: FormData) {
 
   if (error) {
     console.error("Failed to update placement", error.message);
-    redirect("/admin?status=placement-update-failed#placements");
+    adminRedirect("placement-update-failed", "placements");
   }
 
   revalidateCmsPaths();
-  redirect("/admin?status=placement-updated#placements");
+  adminRedirect("placement-updated", "placements");
 }
 
 export async function deletePlacementAction(formData: FormData) {
@@ -330,16 +334,16 @@ export async function deletePlacementAction(formData: FormData) {
   const id = formText(formData, "id");
 
   if (!supabase || !id) {
-    redirect("/admin?status=placement-delete-failed#placements");
+    adminRedirect("placement-delete-failed", "placements");
   }
 
   const { error } = await supabase.from("content_placements").delete().eq("id", id);
 
   if (error) {
     console.error("Failed to delete placement", error.message);
-    redirect("/admin?status=placement-delete-failed#placements");
+    adminRedirect("placement-delete-failed", "placements");
   }
 
   revalidateCmsPaths();
-  redirect("/admin?status=placement-deleted#placements");
+  adminRedirect("placement-deleted", "placements");
 }
