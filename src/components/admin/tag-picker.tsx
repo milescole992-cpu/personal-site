@@ -7,14 +7,29 @@ type TagPickerProps = {
   options: Array<{
     id: string;
     name: string;
+    description?: string;
   }>;
   defaultValue?: string[];
+  placeholder?: string;
+  emptyText?: string;
+  prefix?: string;
 };
 
-export function TagPicker({ name, options, defaultValue = [] }: TagPickerProps) {
+export function TagPicker({
+  name,
+  options,
+  defaultValue = [],
+  placeholder = "选择标签",
+  emptyText = "选择后的标签会出现在这里，可以点 × 删除。",
+  prefix = "#",
+}: TagPickerProps) {
   const [selected, setSelected] = useState<string[]>(defaultValue);
   const selectedSet = useMemo(() => new Set(selected), [selected]);
   const available = options.filter((option) => !selectedSet.has(option.name));
+  const optionMap = useMemo(
+    () => new Map(options.map((option) => [option.name, option])),
+    [options],
+  );
 
   function addTag(value: string) {
     if (!value || selectedSet.has(value)) {
@@ -36,7 +51,7 @@ export function TagPicker({ name, options, defaultValue = [] }: TagPickerProps) 
         className="w-full rounded-md border border-white/10 bg-[#090d18] px-3 py-2.5 text-sm text-slate-200 outline-none transition focus:border-cyan-300/50"
       >
         <option value="">
-          {available.length > 0 ? "选择标签" : "没有更多可选标签"}
+          {available.length > 0 ? placeholder : "没有更多可选项"}
         </option>
         {available.map((option) => (
           <option key={option.id} value={option.name}>
@@ -54,7 +69,15 @@ export function TagPicker({ name, options, defaultValue = [] }: TagPickerProps) 
                 className="inline-flex items-center gap-2 rounded-md border border-cyan-300/20 bg-cyan-300/10 px-2.5 py-1.5 text-xs text-cyan-50"
               >
                 <input type="hidden" name={name} value={tag} />
-                #{tag}
+                <span>
+                  {prefix}
+                  {tag}
+                  {optionMap.get(tag)?.description ? (
+                    <span className="ml-1 text-cyan-100/55">
+                      {optionMap.get(tag)?.description}
+                    </span>
+                  ) : null}
+                </span>
                 <button
                   type="button"
                   onClick={() => removeTag(tag)}
@@ -68,7 +91,7 @@ export function TagPicker({ name, options, defaultValue = [] }: TagPickerProps) 
           </div>
         ) : (
           <p className="px-1 py-2 text-xs text-slate-500">
-            选择后的标签会出现在这里，可以点 × 删除。
+            {emptyText}
           </p>
         )}
       </div>
