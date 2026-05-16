@@ -633,23 +633,35 @@ function ResourceEditor({
             frontPosition="资源卡片、详情页标签、资源库搜索筛选"
           >
             {tagTerms.length > 0 ? (
-              <div className="grid gap-2 sm:grid-cols-2">
-                {tagTerms.map((tag) => (
-                  <label
-                    key={tag.id}
-                    className="flex items-center gap-2 rounded-md border border-white/10 bg-white/[0.035] px-3 py-2 text-xs text-slate-300"
-                  >
-                    <input
-                      name="tags"
-                      type="checkbox"
-                      value={tag.name}
-                      defaultChecked={selectedTags.has(tag.name)}
-                      className="size-4 accent-cyan-300"
-                    />
-                    <span>#{tag.name}</span>
-                  </label>
-                ))}
-              </div>
+              <details className="group rounded-md border border-white/10 bg-black/24">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-3 text-sm text-slate-300">
+                  <span>
+                    {selectedTags.size > 0
+                      ? `已选 ${selectedTags.size} 个标签`
+                      : "选择标签"}
+                  </span>
+                  <span className="text-xs text-slate-500 transition group-open:rotate-180">
+                    ▼
+                  </span>
+                </summary>
+                <div className="max-h-64 overflow-y-auto border-t border-white/10 p-2">
+                  {tagTerms.map((tag) => (
+                    <label
+                      key={tag.id}
+                      className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-sm text-slate-300 transition hover:bg-white/[0.05]"
+                    >
+                      <input
+                        name="tags"
+                        type="checkbox"
+                        value={tag.name}
+                        defaultChecked={selectedTags.has(tag.name)}
+                        className="size-4 accent-cyan-300"
+                      />
+                      <span>#{tag.name}</span>
+                    </label>
+                  ))}
+                </div>
+              </details>
             ) : (
               <EmptyState title="还没有可选标签" description="先到左侧“标签分类”新增标签，发布内容时这里才会出现可选项。" />
             )}
