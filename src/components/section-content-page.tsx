@@ -76,6 +76,12 @@ export function SectionContentPage({
     .sort()
     .at(-1);
   const disabled = !page.is_active;
+  const primaryCtaHref = page.primary_cta_href?.startsWith("/admin")
+    ? "/submit"
+    : page.primary_cta_href;
+  const primaryCtaText = page.primary_cta_href?.startsWith("/admin")
+    ? "投稿内容"
+    : page.primary_cta_text;
 
   return (
     <main className="relative min-h-screen bg-[#070914] px-4 py-10 text-slate-100 sm:px-6 lg:px-8">
@@ -98,12 +104,12 @@ export function SectionContentPage({
                   {page.hero_description}
                 </p>
               ) : null}
-              {page.primary_cta_text && page.primary_cta_href ? (
+              {primaryCtaText && primaryCtaHref ? (
                 <Link
-                  href={page.primary_cta_href}
+                  href={primaryCtaHref}
                   className="mt-5 inline-flex rounded-md border border-cyan-300/25 bg-cyan-300/10 px-4 py-2.5 text-sm font-semibold text-cyan-50 transition hover:border-cyan-200/50"
                 >
-                  {page.primary_cta_text}
+                  {primaryCtaText}
                 </Link>
               ) : null}
             </div>

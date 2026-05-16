@@ -1,4 +1,4 @@
-import { GitBranch, Menu, MoonStar, Search } from "lucide-react";
+import { Menu } from "lucide-react";
 import Link from "next/link";
 import { auth, signOut } from "@/auth";
 import { isAdminEmail } from "@/lib/auth-utils";
@@ -49,27 +49,6 @@ export async function SiteHeader() {
         </nav>
 
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            aria-label="搜索"
-            className="grid size-9 place-items-center rounded-md border border-white/10 bg-white/5 text-slate-300 transition hover:border-cyan-300/40 hover:text-cyan-100"
-          >
-            <Search size={16} />
-          </button>
-          <button
-            type="button"
-            aria-label="暗色模式"
-            className="hidden size-9 place-items-center rounded-md border border-white/10 bg-white/5 text-slate-300 transition hover:border-cyan-300/40 hover:text-cyan-100 sm:grid"
-          >
-            <MoonStar size={16} />
-          </button>
-          <button
-            type="button"
-            aria-label="代码仓库"
-            className="hidden size-9 place-items-center rounded-md border border-white/10 bg-white/5 text-slate-300 transition hover:border-cyan-300/40 hover:text-cyan-100 sm:grid"
-          >
-            <GitBranch size={16} />
-          </button>
           {user ? (
             <div className="flex items-center gap-2">
               {isAdmin ? (
@@ -130,13 +109,22 @@ export async function SiteHeader() {
               登录
             </Link>
           )}
-          <button
-            type="button"
-            aria-label="菜单"
-            className="grid size-9 place-items-center rounded-md border border-white/10 bg-white/5 text-slate-300 md:hidden"
-          >
-            <Menu size={17} />
-          </button>
+          <details className="relative md:hidden">
+            <summary className="grid size-9 cursor-pointer list-none place-items-center rounded-md border border-white/10 bg-white/5 text-slate-300 [&::-webkit-details-marker]:hidden">
+              <Menu size={17} />
+            </summary>
+            <div className="absolute right-0 mt-2 grid w-40 gap-1 rounded-lg border border-white/10 bg-[#0c1020] p-2 shadow-2xl">
+              {navItems.map((item) => (
+                <Link
+                  key={item.label}
+                  href={item.href}
+                  className="rounded-md px-3 py-2 text-sm text-slate-300 transition hover:bg-white/8 hover:text-cyan-100"
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </div>
+          </details>
         </div>
       </div>
     </header>
