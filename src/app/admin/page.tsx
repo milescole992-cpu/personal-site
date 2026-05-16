@@ -45,6 +45,7 @@ import {
   updateResourceAction,
 } from "@/app/actions/resources";
 import { AdminToast } from "@/components/admin-toast";
+import { TagPicker } from "@/components/admin/tag-picker";
 import { CardShell } from "@/components/card-shell";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { CopyLinkButton } from "@/components/copy-link-button";
@@ -577,7 +578,6 @@ function ResourceEditor({
   const categoryTerms = taxonomyTerms.filter(
     (term) => term.kind === "category" && term.is_active,
   );
-  const selectedTags = new Set(resource?.tags ?? []);
 
   return (
     <form action={action} encType="multipart/form-data" className="grid gap-6">
@@ -648,43 +648,14 @@ function ResourceEditor({
             frontPosition="资源卡片、详情页标签、资源库搜索筛选"
           >
             {tagTerms.length > 0 ? (
-              <details className="group rounded-md border border-white/10 bg-black/24">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-3 text-sm text-slate-300">
-                  <span>
-                    {selectedTags.size > 0
-                      ? `已选 ${selectedTags.size} 个标签`
-                      : "选择标签"}
-                  </span>
-                  <span className="text-xs text-slate-500 transition group-open:rotate-180">
-                    ▼
-                  </span>
-                </summary>
-                <div className="max-h-64 overflow-y-auto border-t border-white/10 p-2">
-                  {tagTerms.map((tag) => (
-                    <label
-                      key={tag.id}
-                      className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-sm text-slate-300 transition hover:bg-white/[0.05]"
-                    >
-                      <input
-                        name="tags"
-                        type="checkbox"
-                        value={tag.name}
-                        defaultChecked={selectedTags.has(tag.name)}
-                        className="size-4 accent-cyan-300"
-                      />
-                      <span>#{tag.name}</span>
-                    </label>
-                  ))}
-                </div>
-              </details>
+              <TagPicker
+                name="tags"
+                options={tagTerms.map((tag) => ({ id: tag.id, name: tag.name }))}
+                defaultValue={resource?.tags ?? []}
+              />
             ) : (
               <EmptyState title="还没有可选标签" description="先到左侧“标签分类”新增标签，发布内容时这里才会出现可选项。" />
             )}
-            {resource?.tags.length ? (
-              <p className="mt-2 text-xs text-slate-500">
-                当前内容原有标签：{resource.tags.join(" / ")}
-              </p>
-            ) : null}
           </FieldHelp>
           <FieldHelp
             label="主分类"
@@ -2281,19 +2252,19 @@ function TaxonomyView({ terms }: { terms: TaxonomyTerm[] }) {
         title="标签分类"
         description="这里是发布内容前先维护的标签库和分类库。发布内容时只能从这里选择，避免越填越乱。"
       />
-      <form action={createTaxonomyTermAction} className="grid gap-4 rounded-lg border border-white/10 bg-white/[0.03] p-4 lg:grid-cols-[160px_1fr_1fr_120px_auto]">
+      <form action={createTaxonomyTermAction} className="grid gap-4 rounded-lg border border-white/10 bg-white/[0.03] p-4 lg:grid-cols-[140px_1fr_120px_auto]">
         <select name="kind" defaultValue="tag" className={fieldClass()}>
           <option value="tag">标签</option>
           <option value="category">分类</option>
         </select>
         <input name="name" required placeholder="名称，例如：AI搜索" className={fieldClass()} />
-        <input name="description" placeholder="说明，可选" className={fieldClass()} />
         <input name="sort_order" type="number" defaultValue="100" className={fieldClass()} />
+        <input type="hidden" name="description" value="" />
         <label className="flex items-center gap-2 text-sm text-slate-300">
           <input name="is_active" type="checkbox" defaultChecked className="size-4 accent-cyan-300" />
           启用
         </label>
-        <button className="w-fit rounded-md bg-cyan-300 px-4 py-2.5 text-sm font-semibold text-slate-950 lg:col-start-5">
+        <button className="w-fit rounded-md bg-cyan-300 px-4 py-2.5 text-sm font-semibold text-slate-950 lg:col-start-4">
           新增
         </button>
       </form>
@@ -2317,44 +2288,57 @@ function TaxonomyTermList({
     <div className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
       <h3 className="text-base font-semibold text-white">{title}</h3>
       <p className="mt-1 text-sm text-slate-500">
-        启用后会出现在“发布新内容”的可选项里；停用后不会再被选择。
+        启用后会出现在“发布新内容”的可选项里；点标签右侧 × 可以直接删除。
       </p>
-      <div className="mt-4 space-y-3">
+      <div className="mt-4 rounded-lg border border-white/10 bg-black/20 p-3">
         {terms.map((term) => (
-          <div key={term.id} className="rounded-lg border border-white/10 bg-black/20 p-3">
-            <form
-              action={updateTaxonomyTermAction}
-              className="grid gap-3 lg:grid-cols-[120px_1fr_1fr_90px_auto_auto]"
-            >
-              <input type="hidden" name="id" value={term.id} />
-              <select name="kind" defaultValue={term.kind} className={fieldClass()}>
-                <option value="tag">标签</option>
-                <option value="category">分类</option>
-              </select>
-              <input name="name" defaultValue={term.name} className={fieldClass()} />
-              <input name="description" defaultValue={term.description ?? ""} placeholder="说明" className={fieldClass()} />
-              <input name="sort_order" type="number" defaultValue={term.sort_order} className={fieldClass()} />
-              <label className="flex items-center gap-2 text-sm text-slate-300">
-                <input name="is_active" type="checkbox" defaultChecked={term.is_active} className="size-4 accent-cyan-300" />
-                启用
-              </label>
-              <button className={pillClass(true)}>保存</button>
-            </form>
-            <form action={deleteTaxonomyTermAction} className="mt-2">
+          <form key={term.id} action={deleteTaxonomyTermAction} className="mr-2 mb-2 inline-flex">
+            <span className="inline-flex items-center gap-2 rounded-md border border-white/10 bg-white/[0.045] px-2.5 py-1.5 text-xs text-slate-200">
+              {term.kind === "tag" ? `#${term.name}` : term.name}
               <input type="hidden" name="id" value={term.id} />
               <ConfirmSubmitButton
                 message={`确认删除“${term.name}”？删除后发布内容时不能再选择它。`}
-                className="rounded-md border border-pink-300/30 bg-pink-300/8 px-3 py-2 text-xs font-semibold text-pink-100"
+                className="rounded-sm px-1 text-slate-400 transition hover:bg-pink-300/10 hover:text-pink-100"
               >
-                删除
+                ×
               </ConfirmSubmitButton>
-            </form>
-          </div>
+            </span>
+          </form>
         ))}
         {terms.length === 0 ? (
           <EmptyState title={emptyTitle} description="先在上方新增，发布内容时才会出现可选项。" />
         ) : null}
       </div>
+      {terms.length > 0 ? (
+        <details className="mt-4 rounded-lg border border-white/10 bg-white/[0.025] p-3">
+          <summary className="cursor-pointer text-xs font-semibold text-slate-400">
+            高级编辑：改名称、排序、启用状态
+          </summary>
+          <div className="mt-3 space-y-3">
+            {terms.map((term) => (
+              <form
+                key={term.id}
+                action={updateTaxonomyTermAction}
+                className="grid gap-3 rounded-md border border-white/10 bg-black/20 p-3 lg:grid-cols-[120px_1fr_90px_auto_auto]"
+              >
+                <input type="hidden" name="id" value={term.id} />
+                <input type="hidden" name="description" value={term.description ?? ""} />
+                <select name="kind" defaultValue={term.kind} className={fieldClass()}>
+                  <option value="tag">标签</option>
+                  <option value="category">分类</option>
+                </select>
+                <input name="name" defaultValue={term.name} className={fieldClass()} />
+                <input name="sort_order" type="number" defaultValue={term.sort_order} className={fieldClass()} />
+                <label className="flex items-center gap-2 text-sm text-slate-300">
+                  <input name="is_active" type="checkbox" defaultChecked={term.is_active} className="size-4 accent-cyan-300" />
+                  启用
+                </label>
+                <button className={pillClass(true)}>保存</button>
+              </form>
+            ))}
+          </div>
+        </details>
+      ) : null}
     </div>
   );
 }
