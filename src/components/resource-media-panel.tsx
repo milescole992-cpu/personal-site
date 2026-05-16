@@ -1,4 +1,5 @@
-import { Download, FileText, Play } from "lucide-react";
+import { FileText, ImageIcon, Play } from "lucide-react";
+import Image from "next/image";
 import type { Resource } from "@/lib/supabase";
 
 export function ResourceMediaPanel({ resource }: { resource: Resource }) {
@@ -29,26 +30,37 @@ export function ResourceMediaPanel({ resource }: { resource: Resource }) {
     );
   }
 
-  const label =
-    resource.media_type === "file"
-      ? resource.media_file_name || "下载附件"
-      : "外部资源链接";
+  if (resource.media_type === "image") {
+    return (
+      <section className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
+        <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-cyan-100">
+          <ImageIcon size={16} />
+          图片预览
+          {resource.media_file_name ? (
+            <span className="font-normal text-slate-500">· {resource.media_file_name}</span>
+          ) : null}
+        </div>
+        <Image
+          src={resource.media_url}
+          alt={resource.title}
+          width={1200}
+          height={800}
+          unoptimized
+          className="max-h-[min(70vh,560px)] w-full rounded-md object-contain"
+        />
+      </section>
+    );
+  }
 
   return (
     <section className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
       <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-cyan-100">
         <FileText size={16} />
-        {resource.media_type === "file" ? "附件文件" : "资源链接"}
+        附件文件
       </div>
-      <a
-        href={resource.media_url}
-        target="_blank"
-        rel="noreferrer"
-        className="inline-flex items-center gap-2 rounded-md border border-cyan-300/25 bg-cyan-300/8 px-4 py-2.5 text-sm font-semibold text-cyan-100 transition hover:border-cyan-300/40"
-      >
-        <Download size={15} />
-        {label}
-      </a>
+      <div className="rounded-md border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-400">
+        {resource.media_file_name || "附件已上传"}
+      </div>
     </section>
   );
 }

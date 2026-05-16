@@ -10,11 +10,14 @@ const VIDEO_TYPES = new Set([
   "video/ogg",
 ]);
 
-export type ResourceMediaType = "none" | "file" | "video" | "link";
+export type ResourceMediaType = "none" | "file" | "video" | "image" | "link";
 
 export function inferMediaTypeFromMime(mimeType: string): ResourceMediaType {
   if (VIDEO_TYPES.has(mimeType)) {
     return "video";
+  }
+  if (mimeType.startsWith("image/")) {
+    return "image";
   }
   return "file";
 }
@@ -88,7 +91,11 @@ export async function resolveResourceMediaFromForm(
 
   if (file instanceof File && file.size > 0) {
     const uploaded = await uploadResourceMediaFile(file, resourceId);
-    if (mediaTypeField === "video" || mediaTypeField === "file") {
+    if (
+      mediaTypeField === "video" ||
+      mediaTypeField === "image" ||
+      mediaTypeField === "file"
+    ) {
       return { ...uploaded, media_type: mediaTypeField };
     }
     return uploaded;

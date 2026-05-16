@@ -1,15 +1,13 @@
 import {
   ArrowLeft,
-  ArrowUpRight,
   Download,
   Heart,
   Lock,
   Sparkles,
   Star,
-  Target,
-  UsersRound,
 } from "lucide-react";
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
@@ -77,7 +75,7 @@ export default async function ResourceDetailPage({
   const session = await auth();
   const user = session?.user ? await getOrCreateUser(session.user) : null;
   const isLoggedIn = Boolean(session?.user);
-  const { configured, resource, related } = await getResourceBySlug(slug, user);
+  const { configured, resource } = await getResourceBySlug(slug, user);
 
   if (configured && !resource) {
     notFound();
@@ -112,8 +110,8 @@ export default async function ResourceDetailPage({
 
         {resource ? (
           <>
-            <CardShell className="p-6 sm:p-8">
-              <div className="mb-5 flex flex-wrap items-center gap-2">
+            <CardShell className="p-5 sm:p-6">
+              <div className="mb-4 flex flex-wrap items-center gap-2">
                 <span className="inline-flex items-center gap-2 rounded-md border border-cyan-300/20 bg-cyan-300/8 px-3 py-1.5 font-mono text-xs text-cyan-100">
                   <Sparkles size={14} />
                   AI RESOURCE DETAIL
@@ -127,16 +125,16 @@ export default async function ResourceDetailPage({
                 </span>
               </div>
 
-              <div className="grid gap-7 lg:grid-cols-[1fr_280px] lg:items-start">
+              <div className="grid gap-5 lg:grid-cols-[1fr_240px] lg:items-start">
                 <div>
-                  <h1 className="text-3xl font-semibold leading-tight text-white sm:text-4xl">
+                  <h1 className="text-2xl font-semibold leading-tight text-white sm:text-3xl">
                     {resource.title}
                   </h1>
-                  <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-400 sm:text-base">
+                  <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-400">
                     {resource.description}
                   </p>
 
-                  <div className="mt-5 flex flex-wrap gap-2">
+                  <div className="mt-4 flex flex-wrap gap-2">
                     {resource.tags.map((tag) => (
                       <span
                         key={tag}
@@ -148,18 +146,8 @@ export default async function ResourceDetailPage({
                   </div>
                 </div>
 
+                {isLoggedIn || (resource.media_type === "file" && resource.media_url) ? (
                 <div className="space-y-3 rounded-md border border-white/10 bg-black/24 p-4">
-                  {resource.official_url || resource.source_url ? (
-                    <a
-                      href={resource.official_url || resource.source_url || ""}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-white/10 bg-white/6 px-3 py-2.5 text-sm font-semibold text-slate-100 transition hover:border-cyan-300/40 hover:bg-white/10"
-                    >
-                      来源链接 <ArrowUpRight size={15} />
-                    </a>
-                  ) : null}
-
                   {isLoggedIn ? (
                     <>
                       <form
@@ -173,126 +161,60 @@ export default async function ResourceDetailPage({
                           {resource.isFavorite ? "已收藏" : "收藏资源"}
                         </button>
                       </form>
-                      <form action={downloadResourceAction.bind(null, resource.id)}>
-                        <button
-                          type="submit"
-                          className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-cyan-300 px-3 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200"
-                        >
-                          下载/访问 <Download size={15} />
-                        </button>
-                      </form>
+                      {resource.media_type === "file" && resource.media_url ? (
+                        <form action={downloadResourceAction.bind(null, resource.id)}>
+                          <button
+                            type="submit"
+                            className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-cyan-300 px-3 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200"
+                          >
+                            下载 <Download size={15} />
+                          </button>
+                        </form>
+                      ) : null}
                     </>
-                  ) : (
+                  ) : resource.media_type === "file" && resource.media_url ? (
                     <Link
                       href={loginHref}
                       className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-cyan-300 px-3 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200"
                     >
-                      登录后下载/访问 <Lock size={15} />
+                      登录后下载 <Lock size={15} />
                     </Link>
-                  )}
+                  ) : null}
                 </div>
+                ) : null}
               </div>
             </CardShell>
 
-            <ResourceMediaPanel resource={resource} />
+            {resource.media_type === "video" ? <ResourceMediaPanel resource={resource} /> : null}
 
-            <div className="grid gap-4 lg:grid-cols-2">
-              <CardShell className="p-5">
-                <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-cyan-100">
-                  <UsersRound size={17} />
-                  适合人群
-                </div>
-                <p className="text-sm leading-7 text-slate-400">
-                  {resource.target_audience || resource.audience || "待补充"}
-                </p>
+            {resource.cover_image_url ? (
+              <CardShell className="p-4">
+                <Image
+                  src={resource.cover_image_url}
+                  alt={resource.title}
+                  width={1200}
+                  height={800}
+                  unoptimized
+                  className="max-h-[min(70vh,560px)] w-full rounded-md object-contain"
+                />
               </CardShell>
-              <CardShell className="p-5">
-                <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-pink-100">
-                  <Target size={17} />
-                  使用场景
-                </div>
-                <p className="text-sm leading-7 text-slate-400">
-                  {resource.use_cases || "待补充"}
-                </p>
-              </CardShell>
-            </div>
-
-            {resource.content || resource.pros || resource.cons ? (
-              <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
-                {resource.content ? (
-                  <CardShell className="p-5">
-                    <p className="mb-1 font-mono text-[11px] uppercase tracking-[0.28em] text-cyan-300/70">
-                      Content
-                    </p>
-                    <h2 className="text-lg font-semibold text-white">内容详情</h2>
-                    <div className="mt-3 whitespace-pre-wrap text-sm leading-7 text-slate-400">
-                      {resource.content}
-                    </div>
-                  </CardShell>
-                ) : null}
-                {resource.pros || resource.cons ? (
-                  <div className="space-y-4">
-                    {resource.pros ? (
-                      <CardShell className="p-5">
-                        <h2 className="text-base font-semibold text-white">优点</h2>
-                        <p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-slate-400">
-                          {resource.pros}
-                        </p>
-                      </CardShell>
-                    ) : null}
-                    {resource.cons ? (
-                      <CardShell className="p-5">
-                        <h2 className="text-base font-semibold text-white">
-                          注意事项
-                        </h2>
-                        <p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-slate-400">
-                          {resource.cons}
-                        </p>
-                      </CardShell>
-                    ) : null}
-                  </div>
-                ) : null}
-              </div>
             ) : null}
 
-            <CardShell className="p-5">
-              <div className="mb-4 flex items-end justify-between gap-4">
-                <div>
-                  <p className="mb-1 font-mono text-[11px] uppercase tracking-[0.28em] text-cyan-300/70">
-                    Related
-                  </p>
-                  <h2 className="text-lg font-semibold text-white">相关推荐</h2>
+            {resource.media_type === "image" ? <ResourceMediaPanel resource={resource} /> : null}
+
+            {resource.media_type === "file" ? <ResourceMediaPanel resource={resource} /> : null}
+
+            {resource.content ? (
+              <CardShell className="p-5">
+                <p className="mb-1 font-mono text-[11px] uppercase tracking-[0.28em] text-cyan-300/70">
+                  Content
+                </p>
+                <h2 className="text-lg font-semibold text-white">内容详情</h2>
+                <div className="mt-3 whitespace-pre-wrap text-sm leading-7 text-slate-400">
+                  {resource.content}
                 </div>
-                <Link
-                  href="/resources"
-                  className="text-sm text-slate-400 transition hover:text-cyan-100"
-                >
-                  查看全部
-                </Link>
-              </div>
-              <div className="grid gap-3 md:grid-cols-3">
-                {related.map((item) => (
-                  <Link
-                    key={item.id}
-                    href={`/resources/${getResourceSlug(item)}`}
-                    className="rounded-md border border-white/10 bg-white/5 p-4 transition hover:border-cyan-300/35 hover:bg-white/8"
-                  >
-                    <span className="text-xs text-slate-500">
-                      {item.category}
-                    </span>
-                    <h3 className="mt-2 text-sm font-semibold text-white">
-                      {item.title}
-                    </h3>
-                    <p className="mt-2 line-clamp-3 text-xs leading-5 text-slate-500">
-                      {item.description}
-                    </p>
-                  </Link>
-                ))}
-                {related.length === 0 ? (
-                  <p className="text-sm text-slate-500">暂无相关推荐。</p>
-                ) : null}
-              </div>
-            </CardShell>
+              </CardShell>
+            ) : null}
           </>
         ) : null}
       </div>

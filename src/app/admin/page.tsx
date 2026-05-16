@@ -555,6 +555,17 @@ function ResourceEditor({
       {resource ? <input type="hidden" name="id" defaultValue={resource.id} /> : null}
       <input type="hidden" name="content_type_id" value={fallbackContentTypeId} />
       <input type="hidden" name="resource_type" value={resource?.resource_type ?? "resource"} />
+      <input type="hidden" name="official_url" value={resource?.official_url ?? resource?.source_url ?? ""} />
+      <input type="hidden" name="download_url" value={resource?.download_url ?? ""} />
+      <input type="hidden" name="target_audience" value={resource?.target_audience ?? resource?.audience ?? ""} />
+      <input type="hidden" name="use_cases" value={resource?.use_cases ?? ""} />
+      <input type="hidden" name="pros" value={resource?.pros ?? ""} />
+      <input type="hidden" name="cons" value={resource?.cons ?? ""} />
+      <input
+        type="hidden"
+        name="beginner_friendly_level"
+        value={resource?.beginner_friendly_level ?? 3}
+      />
       <div className="grid gap-5 xl:grid-cols-2">
         <FieldHelp
           label="内容标题"
@@ -704,43 +715,10 @@ function ResourceEditor({
         </FieldHelp>
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-2">
-        <FieldHelp
-          label="适合人群"
-          description="告诉用户这个资源适合谁，越具体越好。"
-          placeholder="例如：AI 新手、内容创作者、副业创业者"
-          example="内容创作者、小团队运营、AI 工具玩家"
-          frontPosition="资源卡片、详情页适合人群区"
-        >
-          <textarea
-            name="target_audience"
-            rows={3}
-            defaultValue={resource?.target_audience ?? resource?.audience ?? ""}
-            placeholder="例如：AI 新手、内容创作者、副业创业者"
-            className={textareaClass()}
-          />
-        </FieldHelp>
-        <FieldHelp
-          label="使用场景"
-          description="说明用户什么时候会用它，能完成什么任务。"
-          placeholder="例如：选题调研、脚本生成、资料总结"
-          example="资料检索、观点对比、竞品研究、内容选题"
-          frontPosition="资源卡片、详情页使用场景区"
-        >
-          <textarea
-            name="use_cases"
-            rows={3}
-            defaultValue={resource?.use_cases ?? ""}
-            placeholder="例如：选题调研、脚本生成、资料总结"
-            className={textareaClass()}
-          />
-        </FieldHelp>
-      </div>
-
       <div className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
-        <h3 className="text-sm font-semibold text-white">附件 / 视频</h3>
+        <h3 className="text-sm font-semibold text-white">视频 / 图片 / 附件</h3>
         <p className="mt-1 text-xs leading-5 text-slate-500">
-          可上传 PDF、压缩包、图片或 MP4/WebM 视频。视频会在详情页内嵌播放；文件提供下载链接。
+          可上传图片、MP4/WebM 视频、PDF、压缩包或文档。前台显示顺序是：视频、图片、附件、正文；只有附件文件才显示下载按钮。
         </p>
         <div className="mt-4 grid gap-4 lg:grid-cols-2">
           <FieldHelp
@@ -757,7 +735,7 @@ function ResourceEditor({
               <option value="none">无附件</option>
               <option value="file">上传文件</option>
               <option value="video">上传视频</option>
-              <option value="link">外部链接</option>
+              <option value="image">上传图片</option>
             </select>
           </FieldHelp>
           <FieldHelp
@@ -773,7 +751,13 @@ function ResourceEditor({
           <div className="mt-3 rounded-md border border-white/10 bg-black/20 p-3 text-xs text-slate-400">
             <p>
               当前：
-              {resource.media_type === "video" ? "视频" : resource.media_type === "file" ? "文件" : "链接"}
+              {resource.media_type === "video"
+                ? "视频"
+                : resource.media_type === "image"
+                  ? "图片"
+                  : resource.media_type === "file"
+                    ? "文件"
+                    : "链接"}
               {resource.media_file_name ? ` · ${resource.media_file_name}` : ""}
             </p>
             <p className="mt-1 break-all text-slate-500">{resource.media_url}</p>
@@ -783,58 +767,14 @@ function ResourceEditor({
             </label>
           </div>
         ) : null}
-        <FieldHelp
-          label="外部媒体链接"
-          description="当媒体类型为「外部链接」时填写；也可作为下载备用地址。"
-          placeholder="https://..."
-          frontPosition="资源详情页"
-        >
-          <input
-            name="media_url"
-            type="url"
-            defaultValue={
-              resource?.media_type === "link" ? resource.media_url ?? "" : ""
-            }
-            placeholder="视频或文件的外部 URL"
-            className={fieldClass()}
-          />
-        </FieldHelp>
+        <input
+          type="hidden"
+          name="media_url"
+          value={resource?.media_type === "link" ? resource.media_url ?? "" : ""}
+        />
       </div>
 
       <div className="grid gap-5 xl:grid-cols-2">
-        <FieldHelp
-          label="官方 / 来源链接"
-          description="公开可见的来源或官网链接。为空时详情页不会显示无效按钮。"
-          placeholder="https://official-site.com"
-          example="https://www.perplexity.ai"
-          frontPosition="资源详情页来源链接按钮"
-        >
-          <input
-            name="official_url"
-            type="url"
-            defaultValue={resource?.official_url ?? resource?.source_url ?? ""}
-            placeholder="官方介绍页、文档或来源"
-            className={fieldClass()}
-          />
-        </FieldHelp>
-        <FieldHelp
-          label="下载 / 访问链接"
-          description="登录用户点击下载/访问时记录 downloads 后跳转到这里。"
-          placeholder="https://..."
-          example="https://www.perplexity.ai"
-          frontPosition="资源详情页登录后下载/访问按钮"
-        >
-          <input
-            name="download_url"
-            type="url"
-            defaultValue={resource?.download_url ?? ""}
-            placeholder="访问入口或资料下载页"
-            className={fieldClass()}
-          />
-        </FieldHelp>
-      </div>
-
-      <div className="grid gap-5 xl:grid-cols-3">
         <FieldHelp
           label="推荐指数"
           description="1-5 分，用于用户快速判断优先级。"
@@ -852,22 +792,6 @@ function ResourceEditor({
           />
         </FieldHelp>
         <FieldHelp
-          label="新手友好度"
-          description="1-5 分，后续可用于新手筛选和路线推荐。"
-          placeholder="1 到 5"
-          example="4"
-          frontPosition="详情页扩展字段，后续筛选使用"
-        >
-          <input
-            name="beginner_friendly_level"
-            type="number"
-            min="1"
-            max="5"
-            defaultValue={resource?.beginner_friendly_level ?? 3}
-            className={fieldClass()}
-          />
-        </FieldHelp>
-        <FieldHelp
           label="排序权重"
           description="数字越小越靠前。同一发布位置内按这个字段排序。"
           placeholder="例如：10"
@@ -879,37 +803,6 @@ function ResourceEditor({
             type="number"
             defaultValue={resource?.sort_order ?? 100}
             className={fieldClass()}
-          />
-        </FieldHelp>
-      </div>
-
-      <div className="grid gap-5 xl:grid-cols-2">
-        <FieldHelp
-          label="优点"
-          description="写这个资源值得推荐的理由；为空时详情页隐藏。"
-          placeholder="例如：结果带来源、上手简单、适合快速研究"
-          example="带引用来源，适合做主题研究。"
-          frontPosition="资源详情页优点区域"
-        >
-          <textarea
-            name="pros"
-            rows={3}
-            defaultValue={resource?.pros ?? ""}
-            className={textareaClass()}
-          />
-        </FieldHelp>
-        <FieldHelp
-          label="缺点 / 注意事项"
-          description="写使用门槛、限制、风险或替代方案；为空时详情页隐藏。"
-          placeholder="例如：部分功能需要订阅，中文结果需二次核对"
-          example="复杂任务仍需人工校对。"
-          frontPosition="资源详情页注意事项区域"
-        >
-          <textarea
-            name="cons"
-            rows={3}
-            defaultValue={resource?.cons ?? ""}
-            className={textareaClass()}
           />
         </FieldHelp>
       </div>

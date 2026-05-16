@@ -470,6 +470,10 @@ export async function downloadResourceAction(resourceId: string) {
     redirect("/resources?status=download-unavailable");
   }
 
+  if (resource.media_type !== "file" || !resource.media_url) {
+    redirect(`/resources/${getResourceSlug(resource)}?status=no-download`);
+  }
+
   const { error } = await supabase.from("downloads").insert({
     user_id: user.id,
     resource_id: resource.id,
@@ -480,5 +484,5 @@ export async function downloadResourceAction(resourceId: string) {
   }
 
   revalidatePath("/dashboard");
-  redirect(resource.download_url || `/resources?download=${resource.id}`);
+  redirect(resource.media_url);
 }

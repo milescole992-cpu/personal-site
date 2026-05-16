@@ -25,7 +25,7 @@ export type Resource = {
   official_url: string | null;
   download_url: string | null;
   cover_image_url: string | null;
-  media_type: "none" | "file" | "video" | "link";
+  media_type: "none" | "file" | "video" | "image" | "link";
   media_url: string | null;
   media_file_name: string | null;
   audience: string;
