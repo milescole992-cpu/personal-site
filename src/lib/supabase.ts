@@ -7,6 +7,13 @@ export type DbUser = {
   avatar_url: string | null;
   provider: string | null;
   provider_account_id: string | null;
+  role: "user" | "admin" | "moderator" | "vip";
+  status: "active" | "restricted" | "banned";
+  bio: string | null;
+  reputation: number;
+  can_submit: boolean;
+  banned_until: string | null;
+  violation_count: number;
   created_at: string;
   updated_at: string;
 };
@@ -46,6 +53,8 @@ export type Resource = {
   rating: number;
   created_at: string;
   updated_at: string;
+  source_submission_id: string | null;
+  contributor_user_id: string | null;
 };
 
 export type ContentType = {
@@ -180,6 +189,47 @@ export type TaxonomyTerm = {
   updated_at: string;
 };
 
+export type UserSubmission = {
+  id: string;
+  user_id: string;
+  submission_type: "tool" | "workflow" | "tutorial" | "resource" | "prompt" | "experience";
+  title: string;
+  slug: string | null;
+  summary: string;
+  content: string | null;
+  content_json: Record<string, unknown> | null;
+  category: string;
+  tags: string[];
+  resource_url: string | null;
+  cover_image_url: string | null;
+  media_type: "none" | "file" | "video" | "image" | "link";
+  media_url: string | null;
+  media_file_name: string | null;
+  status: "draft" | "pending" | "approved" | "rejected" | "published" | "deleted";
+  review_status: "pending" | "approved" | "rejected";
+  review_reason: string | null;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  ai_review_score: number | null;
+  risk_level: "unknown" | "low" | "medium" | "high";
+  published_resource_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type SubmissionAsset = {
+  id: string;
+  submission_id: string;
+  asset_type: "image" | "video" | "attachment" | "cover" | "preview" | "download";
+  url: string;
+  file_name: string | null;
+  mime_type: string | null;
+  size_bytes: number | null;
+  sort_order: number;
+  is_public: boolean;
+  created_at: string;
+};
+
 type Database = {
   public: {
     Tables: {
@@ -296,6 +346,29 @@ type Database = {
           resource_id: string;
         };
         Update: Partial<Favorite>;
+        Relationships: [];
+      };
+      user_submissions: {
+        Row: UserSubmission;
+        Insert: Omit<
+          Partial<UserSubmission>,
+          "id" | "created_at" | "updated_at"
+        > & {
+          user_id: string;
+          title: string;
+          summary: string;
+        };
+        Update: Partial<UserSubmission>;
+        Relationships: [];
+      };
+      submission_assets: {
+        Row: SubmissionAsset;
+        Insert: Omit<Partial<SubmissionAsset>, "id" | "created_at"> & {
+          submission_id: string;
+          asset_type: SubmissionAsset["asset_type"];
+          url: string;
+        };
+        Update: Partial<SubmissionAsset>;
         Relationships: [];
       };
     };

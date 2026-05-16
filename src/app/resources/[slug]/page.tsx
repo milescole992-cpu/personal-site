@@ -146,7 +146,6 @@ export default async function ResourceDetailPage({
                   </div>
                 </div>
 
-                {isLoggedIn || (resource.media_type === "file" && resource.media_url) ? (
                 <div className="space-y-3 rounded-md border border-white/10 bg-black/24 p-4">
                   {isLoggedIn ? (
                     <>
@@ -172,16 +171,25 @@ export default async function ResourceDetailPage({
                         </form>
                       ) : null}
                     </>
-                  ) : resource.media_type === "file" && resource.media_url ? (
-                    <Link
-                      href={loginHref}
-                      className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-cyan-300 px-3 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200"
-                    >
-                      登录后下载 <Lock size={15} />
-                    </Link>
-                  ) : null}
+                  ) : (
+                    <>
+                      <Link
+                        href={loginHref}
+                        className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-pink-300/20 bg-pink-300/8 px-3 py-2.5 text-sm font-semibold text-pink-100 transition hover:border-pink-300/40"
+                      >
+                        登录后收藏 <Lock size={15} />
+                      </Link>
+                      {resource.media_type === "file" && resource.media_url ? (
+                        <Link
+                          href={loginHref}
+                          className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-cyan-300 px-3 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200"
+                        >
+                          登录后下载 <Lock size={15} />
+                        </Link>
+                      ) : null}
+                    </>
+                  )}
                 </div>
-                ) : null}
               </div>
             </CardShell>
 

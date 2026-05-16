@@ -14,7 +14,9 @@ import {
   type Resource,
   type SiteSettings,
   type TaxonomyTerm,
+  type UserSubmission,
 } from "@/lib/supabase";
+import { isAdminEmail } from "@/lib/auth-utils";
 import { getResourceSlug } from "@/lib/slug";
 
 export type ResourceWithState = Resource & {
@@ -29,6 +31,10 @@ export type ActivityItem = {
   id: string;
   created_at: string;
   resource: Resource | null;
+};
+
+export type SubmissionWithUser = UserSubmission & {
+  user?: DbUser | null;
 };
 
 export const defaultSiteSettings: SiteSettings = {
@@ -523,18 +529,46 @@ export async function syncUserFromSession(
     return null;
   }
 
-  const { data, error } = await supabase
+  const { data: existing } = await supabase
     .from("users")
-    .upsert(
-      {
-        email,
+    .select("*")
+    .eq("email", email)
+    .maybeSingle();
+
+  if (existing) {
+    const { data, error } = await supabase
+      .from("users")
+      .update({
         name: sessionUser.name,
         avatar_url: sessionUser.image,
-        provider,
-        provider_account_id: providerAccountId,
-      },
-      { onConflict: "email" },
-    )
+        provider: provider ?? existing.provider,
+        provider_account_id: providerAccountId ?? existing.provider_account_id,
+        role: isAdminEmail(email) ? "admin" : existing.role,
+      })
+      .eq("id", existing.id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Failed to sync user", error.message);
+      return existing;
+    }
+
+    return data;
+  }
+
+  const { data, error } = await supabase
+    .from("users")
+    .insert({
+      email,
+      name: sessionUser.name,
+      avatar_url: sessionUser.image,
+      provider,
+      provider_account_id: providerAccountId,
+      role: isAdminEmail(email) ? "admin" : "user",
+      status: "active",
+      can_submit: true,
+    })
     .select()
     .single();
 
@@ -544,6 +578,27 @@ export async function syncUserFromSession(
   }
 
   return data;
+}
+
+export async function getActiveTaxonomyTerms() {
+  const supabase = getSupabaseServiceClient();
+
+  if (!supabase) {
+    return [] as TaxonomyTerm[];
+  }
+
+  const { data, error } = await supabase
+    .from("taxonomy_terms")
+    .select("*")
+    .eq("is_active", true)
+    .order("sort_order", { ascending: true });
+
+  if (error) {
+    console.error("Failed to load taxonomy terms", error.message);
+    return [];
+  }
+
+  return data ?? [];
 }
 
 export async function getUserByEmail(email?: string | null) {
@@ -569,7 +624,17 @@ export async function getUserByEmail(email?: string | null) {
 
 export async function getOrCreateUser(sessionUser: Session["user"] | undefined) {
   const existing = await getUserByEmail(sessionUser?.email);
-  return existing ?? syncUserFromSession(sessionUser);
+  if (!existing) {
+    return syncUserFromSession(sessionUser);
+  }
+
+  if (isAdminEmail(existing.email) && existing.role !== "admin") {
+    const supabase = getSupabaseServiceClient();
+    await supabase?.from("users").update({ role: "admin" }).eq("id", existing.id);
+    return { ...existing, role: "admin" as const };
+  }
+
+  return existing;
 }
 
 export async function getResourcesForUser(user?: DbUser | null) {
@@ -814,10 +879,11 @@ export async function getDashboardData(user: DbUser | null) {
       configured: Boolean(supabase),
       favorites: [] as ActivityItem[],
       downloads: [] as ActivityItem[],
+      submissions: [] as UserSubmission[],
     };
   }
 
-  const [{ data: favorites }, { data: downloads }] = await Promise.all([
+  const [{ data: favorites }, { data: downloads }, { data: submissions }] = await Promise.all([
     supabase
       .from("favorites")
       .select("*")
@@ -825,6 +891,11 @@ export async function getDashboardData(user: DbUser | null) {
       .order("created_at", { ascending: false }),
     supabase
       .from("downloads")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("user_submissions")
       .select("*")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false }),
@@ -866,6 +937,7 @@ export async function getDashboardData(user: DbUser | null) {
       created_at: item.created_at,
       resource: resourceMap.get(item.resource_id) ?? null,
     })),
+    submissions: (submissions as UserSubmission[] | null) ?? [],
   };
 }
 
@@ -885,6 +957,7 @@ export async function getAdminData() {
       contentPlacements: [] as ContentPlacement[],
       placementRelations: [] as ContentPlacementRelation[],
       taxonomyTerms: [] as TaxonomyTerm[],
+      submissions: [] as SubmissionWithUser[],
     };
   }
 
@@ -899,6 +972,7 @@ export async function getAdminData() {
     { data: contentPlacements },
     { data: placementRelations },
     { data: taxonomyTerms, error: taxonomyTermsError },
+    { data: submissions },
   ] = await Promise.all([
     supabase.from("users").select("*").order("created_at", {
       ascending: false,
@@ -929,7 +1003,13 @@ export async function getAdminData() {
     supabase.from("taxonomy_terms").select("*").order("sort_order", {
       ascending: true,
     }),
+    supabase
+      .from("user_submissions")
+      .select("*")
+      .order("created_at", { ascending: false }),
   ]);
+
+  const userMap = new Map((users ?? []).map((user) => [user.id, user]));
 
   return {
     configured: true,
@@ -943,5 +1023,9 @@ export async function getAdminData() {
     contentPlacements: contentPlacements ?? [],
     placementRelations: placementRelations ?? [],
     taxonomyTerms: taxonomyTermsError ? [] : (taxonomyTerms ?? []),
+    submissions: ((submissions as UserSubmission[] | null) ?? []).map((submission) => ({
+      ...submission,
+      user: userMap.get(submission.user_id) ?? null,
+    })),
   };
 }

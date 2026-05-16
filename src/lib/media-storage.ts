@@ -10,16 +10,69 @@ const VIDEO_TYPES = new Set([
   "video/ogg",
 ]);
 
+const IMAGE_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+]);
+
+const FILE_TYPES = new Set([
+  "application/pdf",
+  "application/zip",
+  "application/x-zip-compressed",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "application/msword",
+  "application/vnd.ms-excel",
+  "application/vnd.ms-powerpoint",
+  "text/plain",
+  "text/markdown",
+]);
+
+const BLOCKED_EXTENSIONS = new Set([
+  "app",
+  "bat",
+  "cmd",
+  "com",
+  "exe",
+  "html",
+  "js",
+  "mjs",
+  "php",
+  "sh",
+  "svg",
+]);
+
 export type ResourceMediaType = "none" | "file" | "video" | "image" | "link";
 
 export function inferMediaTypeFromMime(mimeType: string): ResourceMediaType {
   if (VIDEO_TYPES.has(mimeType)) {
     return "video";
   }
-  if (mimeType.startsWith("image/")) {
+  if (IMAGE_TYPES.has(mimeType)) {
     return "image";
   }
   return "file";
+}
+
+function assertSafeMediaFile(file: File) {
+  const extension = file.name.includes(".")
+    ? file.name.split(".").pop()?.toLowerCase()
+    : "";
+
+  if (extension && BLOCKED_EXTENSIONS.has(extension)) {
+    throw new Error("不支持上传可执行文件、脚本或网页文件");
+  }
+
+  const mimeType = file.type || "";
+  const isAllowed =
+    VIDEO_TYPES.has(mimeType) || IMAGE_TYPES.has(mimeType) || FILE_TYPES.has(mimeType);
+
+  if (!isAllowed) {
+    throw new Error("文件类型不在白名单内，请上传图片、视频、PDF、ZIP 或常见 Office 文档");
+  }
 }
 
 export function sanitizeMediaFileName(name: string) {
@@ -36,6 +89,8 @@ export async function uploadResourceMediaFile(file: File, resourceId: string) {
   if (file.size > MAX_BYTES) {
     throw new Error("文件不能超过 50MB");
   }
+
+  assertSafeMediaFile(file);
 
   const extension = file.name.includes(".")
     ? file.name.split(".").pop()?.toLowerCase()

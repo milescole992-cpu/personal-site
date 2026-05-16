@@ -44,13 +44,19 @@ import {
   quickUpdateResourceAction,
   updateResourceAction,
 } from "@/app/actions/resources";
+import {
+  approveSubmissionAction,
+  deleteSubmissionAction,
+  rejectSubmissionAction,
+  restrictSubmissionUserAction,
+} from "@/app/actions/submissions";
 import { AdminToast } from "@/components/admin-toast";
 import { TagPicker } from "@/components/admin/tag-picker";
 import { CardShell } from "@/components/card-shell";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { CopyLinkButton } from "@/components/copy-link-button";
 import { isAdminEmail } from "@/lib/auth-utils";
-import { getAdminData } from "@/lib/data";
+import { getAdminData, type SubmissionWithUser } from "@/lib/data";
 import type {
   ContentPlacement,
   ContentPlacementRelation,
@@ -78,6 +84,7 @@ type AdminSection =
   | "homepage"
   | "taxonomy"
   | "settings"
+  | "review"
   | "user-content";
 
 type AdminPageProps = {
@@ -144,6 +151,11 @@ const statusMessages: Record<string, string> = {
   "taxonomy-deleted": "标签/分类已删除。",
   "taxonomy-missing": "请填写名称。",
   "taxonomy-failed": "标签/分类保存失败，请确认已执行最新 Supabase SQL。",
+  "submission-approved": "投稿已审核通过，并已转为正式资源。",
+  "submission-rejected": "投稿已拒绝，用户会在个人中心看到原因。",
+  "submission-deleted": "投稿已删除，前台不会展示。",
+  "submission-user-restricted": "用户已被限制投稿，并记录了一次违规。",
+  "submission-review-failed": "投稿审核操作失败，请检查数据库迁移是否已执行。",
 };
 
 const sections: Array<{
@@ -181,6 +193,12 @@ const sections: Array<{
     label: "发布新内容",
     description: "新增资源、教程、工具、工作流或路线内容",
     icon: <FilePlus2 size={17} />,
+  },
+  {
+    id: "review",
+    label: "投稿审核",
+    description: "审核用户投稿，通过后进入正式资源库",
+    icon: <ShieldCheck size={17} />,
   },
   {
     id: "settings",
@@ -222,7 +240,7 @@ const sectionGroups: Array<{
   {
     title: "运营路径",
     description: "日常主要按这个顺序操作",
-    ids: ["dashboard", "homepage", "pages", "content-management", "content-publish", "taxonomy"],
+    ids: ["dashboard", "homepage", "pages", "content-management", "content-publish", "review", "taxonomy"],
   },
   {
     title: "基础配置",
@@ -231,7 +249,7 @@ const sectionGroups: Array<{
   },
   {
     title: "用户与审核",
-    description: "第二阶段扩展",
+    description: "社区内容治理预留",
     ids: ["user-content"],
   },
 ];
@@ -893,15 +911,20 @@ function DashboardView({
   homeSections,
   contentPages,
   downloadsCount,
+  submissions,
 }: {
   resources: Resource[];
   homeSections: HomeSection[];
   contentPages: ContentPage[];
   downloadsCount: number;
+  submissions: SubmissionWithUser[];
 }) {
   const published = resources.filter((item) => item.is_published);
   const drafts = resources.filter((item) => !item.is_published);
   const featured = resources.filter((item) => item.is_featured);
+  const pendingSubmissions = submissions.filter(
+    (item) => item.review_status === "pending" && item.status !== "deleted",
+  );
   const recent = [...resources]
     .sort(
       (a, b) =>
@@ -950,6 +973,7 @@ function DashboardView({
         <StatCard icon={<Home size={20} />} label="首页入口" value={homeSections.length} />
         <StatCard icon={<BookOpenText size={20} />} label="栏目页" value={contentPages.length} />
         <StatCard icon={<UsersRound size={20} />} label="下载记录" value={downloadsCount} />
+        <StatCard icon={<ShieldCheck size={20} />} label="待审核投稿" value={pendingSubmissions.length} />
       </div>
       <div className="mt-6 grid gap-4 lg:grid-cols-[1fr_320px]">
         <div className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
@@ -978,6 +1002,7 @@ function DashboardView({
             <Link href="/admin?section=pages" className={pillClass()}>管理栏目</Link>
             <Link href="/admin?section=content-management" className={pillClass()}>管理内容</Link>
             <Link href="/admin?section=content-publish" className={pillClass()}>新增内容</Link>
+            <Link href="/admin?section=review" className={pillClass()}>审核投稿</Link>
           </div>
         </div>
       </div>
@@ -2227,13 +2252,189 @@ function UserContentView() {
       <SectionHeader
         eyebrow="Moderation"
         title="用户内容管理"
-        description="当前没有投稿、评论、反馈、举报表，不做假数据；这里先把权限逻辑和后台入口预留清楚。"
+        description="投稿审核已经进入“投稿审核”板块；这里预留未来评论、反馈、举报和用户投稿扩展治理。"
       />
       <div className="rounded-lg border border-white/10 bg-white/[0.03] p-5 text-sm leading-7 text-slate-400">
-        <p>未来如果开启用户投稿、评论、反馈、举报：</p>
+        <p>未来如果开启评论、反馈、举报和更多用户生成内容：</p>
         <p className="mt-2">普通用户只能编辑或删除自己发布的内容；管理员可以在后台审核、隐藏、删除所有用户内容。</p>
         <p className="mt-2">被隐藏或删除的用户内容前台不再展示；删除必须二次确认，重要操作后应记录操作日志。</p>
       </div>
+    </CardShell>
+  );
+}
+
+function submissionTypeLabel(type: string) {
+  const labels: Record<string, string> = {
+    tool: "AI 工具",
+    workflow: "AI 工作流",
+    tutorial: "教程文章",
+    resource: "AI 资源",
+    prompt: "AI 提示词",
+    experience: "经验分享",
+  };
+
+  return labels[type] ?? type;
+}
+
+function reviewStatusLabel(status: string) {
+  const labels: Record<string, string> = {
+    pending: "待审核",
+    approved: "已通过",
+    rejected: "已拒绝",
+  };
+
+  return labels[status] ?? status;
+}
+
+function ReviewSubmissionsView({ submissions }: { submissions: SubmissionWithUser[] }) {
+  const pending = submissions.filter(
+    (submission) => submission.review_status === "pending" && submission.status !== "deleted",
+  );
+  const reviewed = submissions
+    .filter((submission) => submission.review_status !== "pending" || submission.status === "deleted")
+    .slice(0, 12);
+
+  return (
+    <CardShell className="p-6">
+      <SectionHeader
+        eyebrow="Review"
+        title="投稿审核"
+        description="普通用户提交的内容不会直接公开。管理员审核通过后，第一阶段会转成正式资源，并保留 source_submission_id 和 contributor_user_id，后续可扩展到文章、提示词或经验分享。"
+      />
+
+      <div className="mb-5 grid gap-3 md:grid-cols-3">
+        <StatCard icon={<ShieldCheck size={20} />} label="待审核" value={pending.length} />
+        <StatCard icon={<Eye size={20} />} label="全部投稿" value={submissions.length} />
+        <StatCard
+          icon={<UsersRound size={20} />}
+          label="已拒绝/删除"
+          value={submissions.filter((item) => item.review_status === "rejected" || item.status === "deleted").length}
+        />
+      </div>
+
+      <div className="space-y-4">
+        {pending.map((submission) => (
+          <div key={submission.id} className="rounded-lg border border-white/10 bg-white/[0.035] p-4">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <div className="mb-2 flex flex-wrap gap-2 text-xs">
+                  <span className="rounded-md bg-cyan-300/10 px-2 py-1 text-cyan-100">
+                    {submissionTypeLabel(submission.submission_type)}
+                  </span>
+                  <span className="rounded-md bg-amber-300/10 px-2 py-1 text-amber-100">
+                    {reviewStatusLabel(submission.review_status)}
+                  </span>
+                  <span className="rounded-md bg-white/5 px-2 py-1 text-slate-400">
+                    风险：{submission.risk_level}
+                  </span>
+                </div>
+                <h3 className="text-lg font-semibold text-white">{submission.title}</h3>
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
+                  {submission.summary}
+                </p>
+                <div className="mt-3 grid gap-1 text-xs leading-5 text-slate-500">
+                  <p>投稿用户：{submission.user?.email ?? submission.user_id}</p>
+                  <p>
+                    用户状态：{submission.user?.status ?? "unknown"} · 信誉 {submission.user?.reputation ?? 0} · 违规 {submission.user?.violation_count ?? 0}
+                  </p>
+                  <p>分类：{submission.category || "未分类"}</p>
+                  <p>标签：{submission.tags.length > 0 ? submission.tags.map((tag) => `#${tag}`).join(" ") : "未选择"}</p>
+                  {submission.resource_url ? (
+                    <p className="break-all">外链：{submission.resource_url}</p>
+                  ) : null}
+                  {submission.media_url ? (
+                    <p className="break-all">
+                      附件：{submission.media_type} · {submission.media_file_name || submission.media_url}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+              <div className="grid min-w-44 gap-2">
+                <form action={approveSubmissionAction}>
+                  <input type="hidden" name="id" value={submission.id} />
+                  <ConfirmSubmitButton
+                    message="确认审核通过？通过后会生成一条正式资源。"
+                    className="w-full rounded-md bg-cyan-300 px-3 py-2 text-sm font-semibold text-slate-950"
+                  >
+                    通过并发布
+                  </ConfirmSubmitButton>
+                </form>
+                <form action={restrictSubmissionUserAction}>
+                  <input type="hidden" name="user_id" value={submission.user_id} />
+                  <ConfirmSubmitButton
+                    message="确认限制该用户投稿？这会把用户状态改为 restricted。"
+                    className="w-full rounded-md border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm font-semibold text-amber-100"
+                  >
+                    限制投稿
+                  </ConfirmSubmitButton>
+                </form>
+                <form action={deleteSubmissionAction}>
+                  <input type="hidden" name="id" value={submission.id} />
+                  <ConfirmSubmitButton
+                    message="确认删除这条投稿？"
+                    className="w-full rounded-md border border-pink-300/30 bg-pink-300/10 px-3 py-2 text-sm font-semibold text-pink-100"
+                  >
+                    删除违规内容
+                  </ConfirmSubmitButton>
+                </form>
+              </div>
+            </div>
+
+            {submission.content ? (
+              <details className="mt-4 rounded-md border border-white/8 bg-black/20 p-3">
+                <summary className="cursor-pointer text-sm font-medium text-slate-200">
+                  查看正文
+                </summary>
+                <div className="mt-3 whitespace-pre-wrap text-sm leading-7 text-slate-400">
+                  {submission.content}
+                </div>
+              </details>
+            ) : null}
+
+            <form action={rejectSubmissionAction} className="mt-4 grid gap-2 lg:grid-cols-[1fr_auto]">
+              <input type="hidden" name="id" value={submission.id} />
+              <input
+                name="review_reason"
+                placeholder="拒绝原因，例如：内容介绍过短、外链不可访问、疑似广告或版权风险。"
+                className={fieldClass()}
+              />
+              <ConfirmSubmitButton
+                message="确认拒绝这条投稿？用户会看到拒绝原因。"
+                className="rounded-md border border-white/10 bg-white/8 px-4 py-2 text-sm font-semibold text-slate-100"
+              >
+                拒绝投稿
+              </ConfirmSubmitButton>
+            </form>
+          </div>
+        ))}
+
+        {pending.length === 0 ? (
+          <EmptyState title="暂无待审核投稿" description="用户从 /submit 提交内容后，会先进入这里等待审核。" />
+        ) : null}
+      </div>
+
+      {reviewed.length > 0 ? (
+        <div className="mt-6 rounded-lg border border-white/10 bg-white/[0.03] p-4">
+          <h3 className="text-base font-semibold text-white">最近已处理</h3>
+          <div className="mt-3 divide-y divide-white/8">
+            {reviewed.map((submission) => (
+              <div key={submission.id} className="flex flex-col gap-1 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="font-medium text-white">{submission.title}</p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {submissionTypeLabel(submission.submission_type)} · {reviewStatusLabel(submission.review_status)} · {submission.user?.email ?? "未知用户"}
+                  </p>
+                </div>
+                {submission.published_resource_id ? (
+                  <span className="rounded-md bg-emerald-300/10 px-2 py-1 text-xs text-emerald-100">
+                    已生成资源
+                  </span>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
     </CardShell>
   );
 }
@@ -2277,6 +2478,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
     contentPlacements,
     placementRelations,
     taxonomyTerms,
+    submissions,
   } = await getAdminData();
   const activeTypes = contentTypes.filter((type) => type.is_active);
   const activePlacements = contentPlacements.filter((placement) => placement.is_active);
@@ -2354,6 +2556,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
               homeSections={homeSections}
               contentPages={contentPages}
               downloadsCount={downloads.length}
+              submissions={submissions}
             />
           ) : null}
 
@@ -2440,6 +2643,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
           {activeSection === "settings" ? (
             <SettingsView settings={settings} contentPages={contentPages} />
           ) : null}
+          {activeSection === "review" ? <ReviewSubmissionsView submissions={submissions} /> : null}
           {activeSection === "user-content" ? <UserContentView /> : null}
 
           <p className="pb-6 text-xs text-slate-600">
