@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { updateProfileAction } from "@/app/actions/interactions";
 import { auth, signOut } from "@/auth";
 import { CardShell } from "@/components/card-shell";
 import { isAdminEmail } from "@/lib/auth-utils";
@@ -28,6 +29,10 @@ const statusMessages: Record<string, string> = {
   "submission-created": "投稿已提交，当前状态为待审核。",
   "submission-failed": "投稿提交失败，请稍后重试或联系管理员。",
   "submission-restricted": "当前账号不能投稿，请查看账号状态。",
+  "profile-saved": "个人资料已保存。",
+  "profile-invalid": "用户名至少 3 个字符，只能包含英文、数字、短横线和下划线。",
+  "username-taken": "这个用户名已经被占用，请换一个。",
+  "profile-failed": "个人资料保存失败。",
 };
 
 export default async function DashboardPage({ searchParams }: DashboardPageProps) {
@@ -38,7 +43,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   }
 
   const user = await getOrCreateUser(session.user);
-  const { configured, favorites, downloads, submissions } = await getDashboardData(user);
+  const { configured, favorites, downloads, submissions, likes, contribution } =
+    await getDashboardData(user);
   const name = session.user.name || session.user.email || "已登录用户";
   const isAdmin = isAdminEmail(session.user.email) || user?.role === "admin";
   const userStatus = user?.status ?? "active";
@@ -77,8 +83,16 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                   状态：{userStatus === "active" ? "正常" : userStatus === "restricted" ? "限制投稿" : "封禁"}
                 </span>
                 <span className="rounded-md bg-white/5 px-2.5 py-1.5">
-                  信誉：{user?.reputation ?? 0}
+                  贡献值：{contribution.score}
                 </span>
+                {user?.username ? (
+                  <Link
+                    href={`/u/${user.username}`}
+                    className="rounded-md border border-cyan-300/20 bg-cyan-300/8 px-2.5 py-1.5 text-cyan-100 transition hover:border-cyan-300/40"
+                  >
+                    查看主页
+                  </Link>
+                ) : null}
                 {isAdmin ? (
                   <Link
                     href="/admin"
@@ -150,12 +164,76 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
         <CardShell>
           <UserRound className="mb-4 text-cyan-200" size={22} />
-          <h2 className="text-lg font-semibold text-white">我的账户信息</h2>
-          <div className="mt-3 grid gap-2 text-sm text-slate-400">
-            <p>邮箱：{session.user.email || "未提供"}</p>
-            <p>昵称：{session.user.name || "未提供"}</p>
-            <p>站内用户 ID：{user?.id || "等待 Supabase 同步"}</p>
-            <p>投稿权限：{canSubmit ? "可投稿" : "已限制"}</p>
+          <h2 className="text-lg font-semibold text-white">我的资料</h2>
+          <form action={updateProfileAction} className="mt-4 grid gap-4">
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="grid gap-2 text-sm text-slate-300">
+                昵称
+                <input
+                  name="name"
+                  defaultValue={user?.name ?? session.user.name ?? ""}
+                  className="rounded-md border border-white/10 bg-black/24 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-300/50"
+                />
+              </label>
+              <label className="grid gap-2 text-sm text-slate-300">
+                用户名
+                <input
+                  name="username"
+                  defaultValue={user?.username ?? ""}
+                  placeholder="例如 miles-ai"
+                  className="rounded-md border border-white/10 bg-black/24 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-300/50"
+                />
+              </label>
+            </div>
+            <label className="grid gap-2 text-sm text-slate-300">
+              个人简介
+              <textarea
+                name="bio"
+                rows={3}
+                defaultValue={user?.bio ?? ""}
+                placeholder="一句话介绍你关注的 AI 工具、工作流或内容方向。"
+                className="rounded-md border border-white/10 bg-black/24 px-3 py-2 text-sm leading-6 text-slate-100 outline-none focus:border-cyan-300/50"
+              />
+            </label>
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="grid gap-2 text-sm text-slate-300">
+                头像 URL
+                <input
+                  name="avatar_url"
+                  defaultValue={user?.avatar_url ?? session.user.image ?? ""}
+                  placeholder="https://..."
+                  className="rounded-md border border-white/10 bg-black/24 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-300/50"
+                />
+              </label>
+              <label className="grid gap-2 text-sm text-slate-300">
+                主页横幅 URL
+                <input
+                  name="profile_banner_url"
+                  defaultValue={user?.profile_banner_url ?? ""}
+                  placeholder="https://..."
+                  className="rounded-md border border-white/10 bg-black/24 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-300/50"
+                />
+              </label>
+            </div>
+            <div className="grid gap-2 text-sm text-slate-400">
+              <p>邮箱：{session.user.email || "未提供"}</p>
+              <p>投稿权限：{canSubmit ? "可投稿" : "已限制"}</p>
+            </div>
+            <button className="w-fit rounded-md bg-cyan-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200">
+              保存资料
+            </button>
+          </form>
+        </CardShell>
+
+        <CardShell>
+          <Sparkles className="mb-4 text-cyan-200" size={22} />
+          <h2 className="text-lg font-semibold text-white">我的贡献</h2>
+          <div className="mt-4 grid gap-3 sm:grid-cols-5">
+            <MiniStat label="贡献值" value={contribution.score} />
+            <MiniStat label="通过投稿" value={contribution.approvedSubmissions} />
+            <MiniStat label="发布资源" value={contribution.contributedResources} />
+            <MiniStat label="被收藏" value={contribution.receivedFavorites} />
+            <MiniStat label="被下载" value={contribution.receivedDownloads} />
           </div>
         </CardShell>
 
@@ -197,6 +275,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           <CardShell glow="cyan">
             <Bookmark className="mb-4 text-cyan-200" size={22} />
             <h2 className="text-lg font-semibold text-white">我的收藏</h2>
+            <p className="mt-1 text-sm text-slate-500">共 {favorites.length} 条收藏</p>
             <div className="mt-3 space-y-3">
               {favorites.map((item) => (
                 <div key={item.id} className="rounded-md bg-white/5 p-3">
@@ -222,6 +301,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           <CardShell glow="violet">
             <Download className="mb-4 text-violet-200" size={22} />
             <h2 className="text-lg font-semibold text-white">我的下载记录</h2>
+            <p className="mt-1 text-sm text-slate-500">共 {downloads.length} 条下载</p>
             <div className="mt-3 space-y-3">
               {downloads.map((item) => (
                 <div key={item.id} className="rounded-md bg-white/5 p-3">
@@ -239,7 +319,34 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             </div>
           </CardShell>
         </div>
+        <CardShell>
+          <h2 className="text-lg font-semibold text-white">我的点赞</h2>
+          <div className="mt-3 space-y-3">
+            {likes.map((item) => (
+              <div key={item.id} className="rounded-md bg-white/5 p-3">
+                <p className="text-sm font-medium text-white">
+                  {item.resource?.title || "资源已删除"}
+                </p>
+                <p className="mt-1 text-xs text-slate-500">
+                  {new Date(item.created_at).toLocaleString("zh-CN")}
+                </p>
+              </div>
+            ))}
+            {likes.length === 0 ? (
+              <p className="text-sm text-slate-500">暂无点赞。</p>
+            ) : null}
+          </div>
+        </CardShell>
       </div>
     </main>
+  );
+}
+
+function MiniStat({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-md border border-white/10 bg-white/[0.035] p-3">
+      <p className="font-mono text-xl text-white">{value}</p>
+      <p className="mt-1 text-xs text-slate-500">{label}</p>
+    </div>
   );
 }

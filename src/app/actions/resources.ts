@@ -421,35 +421,39 @@ export async function quickUpdateResourceAction(formData: FormData) {
 export async function favoriteResourceAction(resourceId: string) {
   const session = await auth();
   const supabase = getSupabaseServiceClient();
+  const resource = await getResourceById(resourceId);
+  const callbackUrl = resource ? `/resources/${getResourceSlug(resource)}` : "/resources";
 
   if (!session?.user) {
-    redirect("/login?callbackUrl=/resources");
+    redirect(`/login?callbackUrl=${encodeURIComponent(callbackUrl)}`);
   }
 
   const user = await getOrCreateUser(session.user);
 
-  if (!supabase || !user) {
+  if (!supabase || !user || !resource) {
     redirect("/resources?status=favorite-unavailable");
   }
 
-  const { error } = await supabase.from("favorites").upsert(
-    {
-      user_id: user.id,
-      resource_id: resourceId,
-    },
-    { onConflict: "user_id,resource_id", ignoreDuplicates: true },
-  );
+  const { data: existing } = await supabase
+    .from("favorites")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("resource_id", resourceId)
+    .maybeSingle();
+
+  const { error } = existing
+    ? await supabase.from("favorites").delete().eq("id", existing.id)
+    : await supabase.from("favorites").insert({
+        user_id: user.id,
+        resource_id: resourceId,
+      });
 
   if (error) {
     console.error("Failed to favorite resource", error.message);
   }
 
-  const resource = await getResourceById(resourceId);
-
   revalidatePath("/resources");
-  if (resource) {
-    revalidatePath(`/resources/${getResourceSlug(resource)}`);
-  }
+  revalidatePath(`/resources/${getResourceSlug(resource)}`);
   revalidatePath("/dashboard");
 }
 

@@ -12,6 +12,7 @@ import {
   type HomeSection,
   type HomeSectionWithPage,
   type Resource,
+  type ResourceComment,
   type SiteSettings,
   type TaxonomyTerm,
   type UserSubmission,
@@ -21,7 +22,16 @@ import { getResourceSlug } from "@/lib/slug";
 
 export type ResourceWithState = Resource & {
   isFavorite: boolean;
+  isLiked?: boolean;
+  favoriteCount?: number;
+  likeCount?: number;
+  downloadCount?: number;
+  commentCount?: number;
   contributor?: Pick<DbUser, "id" | "name" | "email" | "avatar_url" | "reputation"> | null;
+};
+
+export type ResourceCommentWithUser = ResourceComment & {
+  user?: Pick<DbUser, "id" | "name" | "email" | "username" | "avatar_url"> | null;
 };
 
 export type ResourceWithPlacements = Resource & {
@@ -566,6 +576,11 @@ export async function syncUserFromSession(
       avatar_url: sessionUser.image,
       provider,
       provider_account_id: providerAccountId,
+      username: email
+        .split("@")[0]
+        .toLowerCase()
+        .replace(/[^a-z0-9_]+/g, "-")
+        .slice(0, 32),
       role: isAdminEmail(email) ? "admin" : "user",
       status: "active",
       can_submit: true,
@@ -799,6 +814,7 @@ export async function getResourceBySlug(slug: string, user?: DbUser | null) {
       configured: false,
       resource: null as ResourceWithState | null,
       related: [] as Resource[],
+      comments: [] as ResourceCommentWithUser[],
     };
   }
 
@@ -810,31 +826,46 @@ export async function getResourceBySlug(slug: string, user?: DbUser | null) {
 
   if (error) {
     console.error("Failed to load resource by slug", error.message);
-    return { configured: true, resource: null, related: [] };
+    return { configured: true, resource: null, related: [], comments: [] };
   }
 
   const resource =
     resources?.find((item) => getResourceSlug(item) === slug) ?? null;
 
   if (!resource) {
-    return { configured: true, resource: null, related: [] };
+    return { configured: true, resource: null, related: [], comments: [] };
   }
 
   let isFavorite = false;
+  let isLiked = false;
   let contributor: ResourceWithState["contributor"] = null;
 
   if (user) {
-    const { data: favorite, error: favoriteError } = await supabase
+    const [{ data: favorite, error: favoriteError }, { data: like, error: likeError }] =
+      await Promise.all([
+        supabase
       .from("favorites")
       .select("id")
       .eq("user_id", user.id)
       .eq("resource_id", resource.id)
-      .maybeSingle();
+          .maybeSingle(),
+        supabase
+          .from("resource_likes")
+          .select("resource_id")
+          .eq("user_id", user.id)
+          .eq("resource_id", resource.id)
+          .maybeSingle(),
+      ]);
 
     if (favoriteError) {
       console.error("Failed to load favorite state", favoriteError.message);
     } else {
       isFavorite = Boolean(favorite);
+    }
+    if (likeError) {
+      console.error("Failed to load like state", likeError.message);
+    } else {
+      isLiked = Boolean(like);
     }
   }
 
@@ -852,17 +883,107 @@ export async function getResourceBySlug(slug: string, user?: DbUser | null) {
     }
   }
 
+  const [
+    { count: favoriteCount },
+    { count: likeCount },
+    { count: downloadCount },
+    { data: comments, count: commentCount },
+  ] = await Promise.all([
+    supabase
+      .from("favorites")
+      .select("id", { count: "exact", head: true })
+      .eq("resource_id", resource.id),
+    supabase
+      .from("resource_likes")
+      .select("resource_id", { count: "exact", head: true })
+      .eq("resource_id", resource.id),
+    supabase
+      .from("downloads")
+      .select("id", { count: "exact", head: true })
+      .eq("resource_id", resource.id),
+    supabase
+      .from("resource_comments")
+      .select("*", { count: "exact" })
+      .eq("resource_id", resource.id)
+      .eq("is_deleted", false)
+      .order("created_at", { ascending: true }),
+  ]);
+
+  const commentUserIds = [...new Set((comments ?? []).map((comment) => comment.user_id))];
+  const commentUsers = new Map<string, Pick<DbUser, "id" | "name" | "email" | "username" | "avatar_url">>();
+
+  if (commentUserIds.length > 0) {
+    const { data: users } = await supabase
+      .from("users")
+      .select("id,name,email,username,avatar_url")
+      .in("id", commentUserIds);
+
+    for (const item of users ?? []) {
+      commentUsers.set(item.id, item);
+    }
+  }
+
+  const commentsWithUsers = ((comments as ResourceComment[] | null) ?? []).map((comment) => ({
+    ...comment,
+    user: commentUsers.get(comment.user_id) ?? null,
+  }));
+
+  const scoreById = new Map<string, number>();
+  const relatedIds = (resources ?? [])
+    .filter((item) => item.id !== resource.id)
+    .map((item) => {
+      const sameCategory = item.category === resource.category ? 6 : 0;
+      const tagOverlap = item.tags.filter((tag) => resource.tags.includes(tag)).length * 3;
+      const flagScore = (item.is_hot ? 2 : 0) + (item.is_featured ? 2 : 0) + item.rating;
+      scoreById.set(item.id, sameCategory + tagOverlap + flagScore);
+      return item.id;
+    });
+
+  const interactionScore = new Map<string, number>();
+
+  if (relatedIds.length > 0) {
+    const [{ data: relatedLikes }, { data: relatedFavorites }, { data: relatedDownloads }] =
+      await Promise.all([
+        supabase.from("resource_likes").select("resource_id").in("resource_id", relatedIds),
+        supabase.from("favorites").select("resource_id").in("resource_id", relatedIds),
+        supabase.from("downloads").select("resource_id").in("resource_id", relatedIds),
+      ]);
+
+    for (const item of relatedLikes ?? []) {
+      interactionScore.set(item.resource_id, (interactionScore.get(item.resource_id) ?? 0) + 1);
+    }
+    for (const item of relatedFavorites ?? []) {
+      interactionScore.set(item.resource_id, (interactionScore.get(item.resource_id) ?? 0) + 1);
+    }
+    for (const item of relatedDownloads ?? []) {
+      interactionScore.set(item.resource_id, (interactionScore.get(item.resource_id) ?? 0) + 2);
+    }
+  }
+
   const related = (resources ?? [])
-    .filter(
-      (item) => item.id !== resource.id && item.category === resource.category,
+    .filter((item) => item.id !== resource.id)
+    .sort(
+      (a, b) =>
+        (scoreById.get(b.id) ?? 0) +
+        (interactionScore.get(b.id) ?? 0) -
+        ((scoreById.get(a.id) ?? 0) + (interactionScore.get(a.id) ?? 0)),
     )
-    .sort((a, b) => b.rating - a.rating)
     .slice(0, 3);
 
   return {
     configured: true,
-    resource: { ...resource, isFavorite, contributor },
+    resource: {
+      ...resource,
+      isFavorite,
+      isLiked,
+      contributor,
+      favoriteCount: favoriteCount ?? 0,
+      likeCount: likeCount ?? 0,
+      downloadCount: downloadCount ?? 0,
+      commentCount: commentCount ?? 0,
+    },
     related,
+    comments: commentsWithUsers,
   };
 }
 
@@ -896,10 +1017,18 @@ export async function getDashboardData(user: DbUser | null) {
       favorites: [] as ActivityItem[],
       downloads: [] as ActivityItem[],
       submissions: [] as UserSubmission[],
+      likes: [] as ActivityItem[],
+      contribution: {
+        approvedSubmissions: 0,
+        contributedResources: 0,
+        receivedFavorites: 0,
+        receivedDownloads: 0,
+        score: 0,
+      },
     };
   }
 
-  const [{ data: favorites }, { data: downloads }, { data: submissions }] = await Promise.all([
+  const [{ data: favorites }, { data: downloads }, { data: submissions }, { data: likes }] = await Promise.all([
     supabase
       .from("favorites")
       .select("*")
@@ -915,6 +1044,11 @@ export async function getDashboardData(user: DbUser | null) {
       .select("*")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false }),
+    supabase
+      .from("resource_likes")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false }),
   ]);
 
   const resourceIds = [
@@ -923,6 +1057,8 @@ export async function getDashboardData(user: DbUser | null) {
         ...((favorites as Favorite[] | null)?.map((item) => item.resource_id) ??
           []),
         ...((downloads as Download[] | null)?.map((item) => item.resource_id) ??
+          []),
+        ...((likes as Array<{ resource_id: string }> | null)?.map((item) => item.resource_id) ??
           []),
       ].filter(Boolean),
     ),
@@ -941,6 +1077,31 @@ export async function getDashboardData(user: DbUser | null) {
     }
   }
 
+  const contributedResourceIds = ((await supabase
+    .from("resources")
+    .select("id")
+    .eq("contributor_user_id", user.id))?.data ?? []).map((item) => item.id);
+
+  const [{ count: receivedFavorites }, { count: receivedDownloads }] =
+    contributedResourceIds.length > 0
+      ? await Promise.all([
+          supabase
+            .from("favorites")
+            .select("id", { count: "exact", head: true })
+            .in("resource_id", contributedResourceIds),
+          supabase
+            .from("downloads")
+            .select("id", { count: "exact", head: true })
+            .in("resource_id", contributedResourceIds),
+        ])
+      : [{ count: 0 }, { count: 0 }];
+
+  const approvedSubmissions = ((submissions as UserSubmission[] | null) ?? []).filter(
+    (submission) => submission.review_status === "approved",
+  ).length;
+  const contributionScore =
+    approvedSubmissions + (receivedFavorites ?? 0) + (receivedDownloads ?? 0) * 2;
+
   return {
     configured: true,
     favorites: ((favorites as Favorite[] | null) ?? []).map((item) => ({
@@ -953,7 +1114,113 @@ export async function getDashboardData(user: DbUser | null) {
       created_at: item.created_at,
       resource: resourceMap.get(item.resource_id) ?? null,
     })),
+    likes: ((likes as Array<{ resource_id: string; created_at: string }> | null) ?? []).map((item) => ({
+      id: item.resource_id,
+      created_at: item.created_at,
+      resource: resourceMap.get(item.resource_id) ?? null,
+    })),
     submissions: (submissions as UserSubmission[] | null) ?? [],
+    contribution: {
+      approvedSubmissions,
+      contributedResources: contributedResourceIds.length,
+      receivedFavorites: receivedFavorites ?? 0,
+      receivedDownloads: receivedDownloads ?? 0,
+      score: contributionScore,
+    },
+  };
+}
+
+export async function getCreatorProfile(username: string) {
+  const supabase = getSupabaseServiceClient();
+
+  if (!supabase) {
+    return {
+      configured: false,
+      user: null as DbUser | null,
+      resources: [] as Resource[],
+      stats: {
+        submissions: 0,
+        approved: 0,
+        favorites: 0,
+        downloads: 0,
+        likes: 0,
+        score: 0,
+      },
+    };
+  }
+
+  const { data: user, error } = await supabase
+    .from("users")
+    .select("*")
+    .eq("username", username)
+    .maybeSingle();
+
+  if (error || !user) {
+    return {
+      configured: true,
+      user: null,
+      resources: [] as Resource[],
+      stats: {
+        submissions: 0,
+        approved: 0,
+        favorites: 0,
+        downloads: 0,
+        likes: 0,
+        score: 0,
+      },
+    };
+  }
+
+  const [{ data: resources }, { count: submissions }, { count: approved }] =
+    await Promise.all([
+      supabase
+        .from("resources")
+        .select("*")
+        .eq("contributor_user_id", user.id)
+        .eq("is_published", true)
+        .order("published_at", { ascending: false }),
+      supabase
+        .from("user_submissions")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id),
+      supabase
+        .from("user_submissions")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("review_status", "approved"),
+    ]);
+
+  const resourceIds = (resources ?? []).map((resource) => resource.id);
+  const [{ count: favorites }, { count: downloads }, { count: likes }] =
+    resourceIds.length > 0
+      ? await Promise.all([
+          supabase
+            .from("favorites")
+            .select("id", { count: "exact", head: true })
+            .in("resource_id", resourceIds),
+          supabase
+            .from("downloads")
+            .select("id", { count: "exact", head: true })
+            .in("resource_id", resourceIds),
+          supabase
+            .from("resource_likes")
+            .select("resource_id", { count: "exact", head: true })
+            .in("resource_id", resourceIds),
+        ])
+      : [{ count: 0 }, { count: 0 }, { count: 0 }];
+
+  return {
+    configured: true,
+    user,
+    resources: resources ?? [],
+    stats: {
+      submissions: submissions ?? 0,
+      approved: approved ?? 0,
+      favorites: favorites ?? 0,
+      downloads: downloads ?? 0,
+      likes: likes ?? 0,
+      score: (approved ?? 0) + (favorites ?? 0) + (downloads ?? 0) * 2,
+    },
   };
 }
 

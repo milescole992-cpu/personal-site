@@ -7,10 +7,13 @@ export type DbUser = {
   avatar_url: string | null;
   provider: string | null;
   provider_account_id: string | null;
+  username: string | null;
   role: "user" | "admin" | "moderator" | "vip";
   status: "active" | "restricted" | "banned";
   bio: string | null;
+  profile_banner_url: string | null;
   reputation: number;
+  contribution_score: number;
   can_submit: boolean;
   banned_until: string | null;
   violation_count: number;
@@ -172,6 +175,22 @@ export type Download = {
 
 export type Favorite = {
   id: string;
+  user_id: string;
+  resource_id: string;
+  created_at: string;
+};
+
+export type ResourceComment = {
+  id: string;
+  resource_id: string;
+  user_id: string;
+  content: string;
+  is_deleted: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ResourceLike = {
   user_id: string;
   resource_id: string;
   created_at: string;
@@ -346,6 +365,25 @@ type Database = {
           resource_id: string;
         };
         Update: Partial<Favorite>;
+        Relationships: [];
+      };
+      resource_comments: {
+        Row: ResourceComment;
+        Insert: Omit<Partial<ResourceComment>, "id" | "created_at" | "updated_at"> & {
+          resource_id: string;
+          user_id: string;
+          content: string;
+        };
+        Update: Partial<ResourceComment>;
+        Relationships: [];
+      };
+      resource_likes: {
+        Row: ResourceLike;
+        Insert: Omit<Partial<ResourceLike>, "created_at"> & {
+          user_id: string;
+          resource_id: string;
+        };
+        Update: Partial<ResourceLike>;
         Relationships: [];
       };
       user_submissions: {
