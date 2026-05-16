@@ -490,6 +490,9 @@ function PublishingTargetChecklist({
   selectedIds?: Set<string>;
 }) {
   const targets = publishingTargets(homeSections, pages, placements);
+  const selectedCount = targets.filter(({ placement }) =>
+    selectedIds?.has(placement.id),
+  ).length;
 
   if (targets.length === 0) {
     return (
@@ -507,31 +510,43 @@ function PublishingTargetChecklist({
       <div className="mb-3 rounded-md border border-cyan-300/15 bg-cyan-300/[0.055] px-3 py-2 text-xs leading-5 text-slate-400">
         只要内容设为“已发布”，就会进入锁定的「综合资源」页。下面这些选项决定它额外出现在哪个首页入口对应的二层栏目里。
       </div>
-      <div className="grid gap-3 md:grid-cols-2">
-        {targets.map(({ section, page, placement }) => (
-          <label
-            key={placement.id}
-            className="flex cursor-pointer items-start gap-3 rounded-lg border border-white/10 bg-white/[0.03] p-4 text-sm text-slate-300 transition hover:border-cyan-300/30 hover:bg-white/[0.05]"
-          >
-            <input
-              name="placement_ids"
-              type="checkbox"
-              value={placement.id}
-              defaultChecked={selectedIds?.has(placement.id)}
-              className="mt-1 size-4 accent-cyan-300"
-            />
-            <span className="min-w-0">
-              <span className="block font-semibold text-white">{section.title}</span>
-              <span className="mt-1 block text-xs leading-5 text-cyan-100">
-                发布到二层栏目：{page.title}
+      <details className="group rounded-md border border-white/10 bg-black/24">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-3 text-sm text-slate-300">
+          <span>
+            {selectedCount > 0
+              ? `已选择 ${selectedCount} 个栏目`
+              : "选择发布栏目"}
+          </span>
+          <span className="text-xs text-slate-500 transition group-open:rotate-180">
+            ▼
+          </span>
+        </summary>
+        <div className="max-h-72 overflow-y-auto border-t border-white/10 p-2">
+          {targets.map(({ section, page, placement }) => (
+            <label
+              key={placement.id}
+              className="flex cursor-pointer items-start gap-3 rounded-md px-2 py-2 text-sm text-slate-300 transition hover:bg-white/[0.05]"
+            >
+              <input
+                name="placement_ids"
+                type="checkbox"
+                value={placement.id}
+                defaultChecked={selectedIds?.has(placement.id)}
+                className="mt-1 size-4 accent-cyan-300"
+              />
+              <span className="min-w-0">
+                <span className="block font-semibold text-white">{section.title}</span>
+                <span className="mt-1 block text-xs leading-5 text-cyan-100">
+                  发布到二层栏目：{page.title}
+                </span>
+                <span className="mt-1 block text-xs leading-5 text-slate-500">
+                  前端路径：{page.page_path} · 内容来源：{placement.name}
+                </span>
               </span>
-              <span className="mt-1 block text-xs leading-5 text-slate-500">
-                前端路径：{page.page_path} · 内容来源：{placement.name}
-              </span>
-            </span>
-          </label>
-        ))}
-      </div>
+            </label>
+          ))}
+        </div>
+      </details>
     </div>
   );
 }
