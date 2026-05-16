@@ -491,14 +491,9 @@ function PublishingTargetChecklist({
   selectedIds?: Set<string>;
 }) {
   const targets = publishingTargets(homeSections, pages, placements);
-  const options = targets.map(({ section, page, placement }) => ({
-    id: placement.id,
-    name: placement.id,
-    description: `${section.title} → ${page.title}（${page.page_path}）`,
-  }));
-  const defaultValue = options
-    .filter((option) => selectedIds?.has(option.id))
-    .map((option) => option.name);
+  const selectedCount = targets.filter(({ placement }) =>
+    selectedIds?.has(placement.id),
+  ).length;
 
   if (targets.length === 0) {
     return (
@@ -516,14 +511,43 @@ function PublishingTargetChecklist({
       <div className="mb-3 rounded-md border border-cyan-300/15 bg-cyan-300/[0.055] px-3 py-2 text-xs leading-5 text-slate-400">
         只要内容设为“已发布”，就会进入锁定的「综合资源」页。下面这些选项决定它额外出现在哪个首页入口对应的二层栏目里。
       </div>
-      <TagPicker
-        name="placement_ids"
-        options={options}
-        defaultValue={defaultValue}
-        placeholder="选择发布栏目"
-        emptyText="选择后的栏目会出现在这里，可以点 × 移除。"
-        prefix=""
-      />
+      <details className="group rounded-md border border-white/10 bg-black/24">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-3 text-sm text-slate-300">
+          <span>
+            {selectedCount > 0
+              ? `已选择 ${selectedCount} 个栏目`
+              : "选择发布栏目"}
+          </span>
+          <span className="text-xs text-slate-500 transition group-open:rotate-180">
+            ▼
+          </span>
+        </summary>
+        <div className="max-h-72 overflow-y-auto border-t border-white/10 p-2">
+          {targets.map(({ section, page, placement }) => (
+            <label
+              key={placement.id}
+              className="flex cursor-pointer items-start gap-3 rounded-md px-2 py-2 text-sm text-slate-300 transition hover:bg-white/[0.05]"
+            >
+              <input
+                name="placement_ids"
+                type="checkbox"
+                value={placement.id}
+                defaultChecked={selectedIds?.has(placement.id)}
+                className="mt-1 size-4 accent-cyan-300"
+              />
+              <span className="min-w-0">
+                <span className="block font-semibold text-white">{section.title}</span>
+                <span className="mt-1 block text-xs leading-5 text-cyan-100">
+                  发布到二层栏目：{page.title}
+                </span>
+                <span className="mt-1 block text-xs leading-5 text-slate-500">
+                  前端路径：{page.page_path} · 内容来源：{placement.name}
+                </span>
+              </span>
+            </label>
+          ))}
+        </div>
+      </details>
     </div>
   );
 }
@@ -2228,25 +2252,23 @@ function TaxonomyView({ terms }: { terms: TaxonomyTerm[] }) {
         title="标签分类"
         description="这里是发布内容前先维护的标签库和分类库。发布内容时只能从这里选择，避免越填越乱。"
       />
-      <form action={createTaxonomyTermAction} className="grid gap-4 rounded-lg border border-white/10 bg-white/[0.03] p-4 lg:grid-cols-[140px_1fr_120px_auto]">
-        <select name="kind" defaultValue="tag" className={fieldClass()}>
-          <option value="tag">标签</option>
-          <option value="category">分类</option>
-        </select>
-        <input name="name" required placeholder="名称，例如：AI搜索" className={fieldClass()} />
-        <input name="sort_order" type="number" defaultValue="100" className={fieldClass()} />
-        <input type="hidden" name="description" value="" />
-        <label className="flex items-center gap-2 text-sm text-slate-300">
-          <input name="is_active" type="checkbox" defaultChecked className="size-4 accent-cyan-300" />
-          启用
-        </label>
-        <button className="w-fit rounded-md bg-cyan-300 px-4 py-2.5 text-sm font-semibold text-slate-950 lg:col-start-4">
-          新增
-        </button>
-      </form>
 
-      <TaxonomyTermList title="标签库" emptyTitle="暂无标签" terms={tags} />
-      <TaxonomyTermList title="分类库" emptyTitle="暂无分类" terms={categories} />
+      <TaxonomyTermList
+        title="标签库"
+        emptyTitle="暂无标签"
+        kind="tag"
+        inputPlaceholder="输入标签名称，例如：AI搜索"
+        addLabel="新增标签"
+        terms={tags}
+      />
+      <TaxonomyTermList
+        title="分类库"
+        emptyTitle="暂无分类"
+        kind="category"
+        inputPlaceholder="输入分类名称，例如：视频创作"
+        addLabel="新增分类"
+        terms={categories}
+      />
     </CardShell>
   );
 }
@@ -2254,18 +2276,34 @@ function TaxonomyView({ terms }: { terms: TaxonomyTerm[] }) {
 function TaxonomyTermList({
   title,
   emptyTitle,
+  kind,
+  inputPlaceholder,
+  addLabel,
   terms,
 }: {
   title: string;
   emptyTitle: string;
+  kind: "tag" | "category";
+  inputPlaceholder: string;
+  addLabel: string;
   terms: TaxonomyTerm[];
 }) {
   return (
     <div className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
       <h3 className="text-base font-semibold text-white">{title}</h3>
       <p className="mt-1 text-sm text-slate-500">
-        启用后会出现在“发布新内容”的可选项里；点标签右侧 × 可以直接删除。
+        启用后会出现在“发布新内容”的可选项里；点右侧 × 可以直接删除。
       </p>
+      <form action={createTaxonomyTermAction} className="mt-4 grid gap-3 rounded-lg border border-white/10 bg-black/20 p-3 lg:grid-cols-[1fr_110px_auto]">
+        <input type="hidden" name="kind" value={kind} />
+        <input type="hidden" name="description" value="" />
+        <input type="hidden" name="is_active" value="on" />
+        <input name="name" required placeholder={inputPlaceholder} className={fieldClass()} />
+        <input name="sort_order" type="number" defaultValue="100" className={fieldClass()} />
+        <button className="w-fit rounded-md bg-cyan-300 px-4 py-2.5 text-sm font-semibold text-slate-950">
+          {addLabel}
+        </button>
+      </form>
       <div className="mt-4 rounded-lg border border-white/10 bg-black/20 p-3">
         {terms.map((term) => (
           <form key={term.id} action={deleteTaxonomyTermAction} className="mr-2 mb-2 inline-flex">
