@@ -5,6 +5,7 @@ import {
   Lock,
   Sparkles,
   Star,
+  UserRound,
 } from "lucide-react";
 import type { Metadata } from "next";
 import Image from "next/image";
@@ -144,6 +145,41 @@ export default async function ResourceDetailPage({
                       </span>
                     ))}
                   </div>
+
+                  {resource.contributor ? (
+                    <div className="mt-4 inline-flex items-center gap-3 rounded-md border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-slate-400">
+                      <span
+                        className="grid size-7 place-items-center rounded-md bg-cyan-300/12 text-[11px] font-semibold text-cyan-100"
+                        style={
+                          resource.contributor.avatar_url
+                            ? {
+                                backgroundImage: `url(${resource.contributor.avatar_url})`,
+                                backgroundPosition: "center",
+                                backgroundSize: "cover",
+                              }
+                            : undefined
+                        }
+                      >
+                        {resource.contributor.avatar_url
+                          ? ""
+                          : (resource.contributor.name || resource.contributor.email)
+                              .slice(0, 1)
+                              .toUpperCase()}
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <UserRound size={13} className="text-cyan-200" />
+                        由{" "}
+                        <span className="font-medium text-slate-200">
+                          {resource.contributor.name ||
+                            resource.contributor.email.split("@")[0]}
+                        </span>
+                        投稿
+                      </span>
+                      <span className="hidden text-slate-600 sm:inline">
+                        贡献值 {resource.contributor.reputation}
+                      </span>
+                    </div>
+                  ) : null}
                 </div>
 
                 <div className="space-y-3 rounded-md border border-white/10 bg-black/24 p-4">

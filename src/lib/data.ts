@@ -21,6 +21,7 @@ import { getResourceSlug } from "@/lib/slug";
 
 export type ResourceWithState = Resource & {
   isFavorite: boolean;
+  contributor?: Pick<DbUser, "id" | "name" | "email" | "avatar_url" | "reputation"> | null;
 };
 
 export type ResourceWithPlacements = Resource & {
@@ -820,6 +821,7 @@ export async function getResourceBySlug(slug: string, user?: DbUser | null) {
   }
 
   let isFavorite = false;
+  let contributor: ResourceWithState["contributor"] = null;
 
   if (user) {
     const { data: favorite, error: favoriteError } = await supabase
@@ -836,6 +838,20 @@ export async function getResourceBySlug(slug: string, user?: DbUser | null) {
     }
   }
 
+  if (resource.contributor_user_id) {
+    const { data: contributorData, error: contributorError } = await supabase
+      .from("users")
+      .select("id,name,email,avatar_url,reputation")
+      .eq("id", resource.contributor_user_id)
+      .maybeSingle();
+
+    if (contributorError) {
+      console.error("Failed to load contributor", contributorError.message);
+    } else {
+      contributor = contributorData;
+    }
+  }
+
   const related = (resources ?? [])
     .filter(
       (item) => item.id !== resource.id && item.category === resource.category,
@@ -845,7 +861,7 @@ export async function getResourceBySlug(slug: string, user?: DbUser | null) {
 
   return {
     configured: true,
-    resource: { ...resource, isFavorite },
+    resource: { ...resource, isFavorite, contributor },
     related,
   };
 }
